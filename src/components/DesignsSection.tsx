@@ -9,6 +9,7 @@ import {
   updateDesignStatus,
   uploadDesign,
 } from "@/app/(app)/actions";
+import { FILE_INPUT_CLASS } from "@/lib/ui";
 
 function DesignCard({
   design,
@@ -115,7 +116,13 @@ function StagePanel({
       <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
       <form action={uploadWithIds} className="mt-2 space-y-2">
         <input type="hidden" name="stage" value={stage} />
-        <input type="file" name="file" accept="image/*" required className="block text-xs" />
+        <input
+          type="file"
+          name="file"
+          accept="image/*"
+          required
+          className={`block ${FILE_INPUT_CLASS}`}
+        />
         <input
           name="label"
           placeholder="Label (optional, e.g. v2, back view)"

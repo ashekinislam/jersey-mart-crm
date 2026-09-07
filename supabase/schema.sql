@@ -15,6 +15,17 @@ create table if not exists customers (
   status text not null default 'lead'
     check (status in ('lead','potential','active','repeat','inactive')),
   tags text[] not null default '{}',
+  deadline date,
+  order_status text not null default 'quote_sent'
+    check (order_status in ('quote_sent','deposit_paid','mockup_sent','approved','in_production','shipped','delivered','cancelled')),
+  payment_status text not null default 'unpaid'
+    check (payment_status in ('unpaid','invoice_sent','paid')),
+  payment_due_date date,
+  shipping_status text not null default 'not_shipped'
+    check (shipping_status in ('not_shipped','at_factory','with_carrier','in_transit_overseas','in_transit_australia','out_for_delivery','delivered','ready_for_pickup','picked_up')),
+  tracking_url text,
+  tracking_number text,
+  invoice_storage_path text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -139,5 +150,28 @@ create policy "owner_insert designs bucket" on storage.objects
 create policy "owner_delete designs bucket" on storage.objects
   for delete using (
     bucket_id = 'designs'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- Storage bucket for uploaded invoices (private — not publicly readable)
+insert into storage.buckets (id, name, public)
+values ('invoices', 'invoices', false)
+on conflict (id) do nothing;
+
+create policy "owner_select invoices bucket" on storage.objects
+  for select using (
+    bucket_id = 'invoices'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+create policy "owner_insert invoices bucket" on storage.objects
+  for insert with check (
+    bucket_id = 'invoices'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+create policy "owner_delete invoices bucket" on storage.objects
+  for delete using (
+    bucket_id = 'invoices'
     and (storage.foldername(name))[1] = auth.uid()::text
   );

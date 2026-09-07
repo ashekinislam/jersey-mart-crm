@@ -10,6 +10,9 @@ import type {
   DesignStage,
   DesignStatus,
   NoteSource,
+  OrderTrackingStatus,
+  PaymentStatus,
+  ShippingStatus,
 } from "@/lib/types";
 
 export async function signOut() {
@@ -279,21 +282,29 @@ export async function addPlayer(customerId: string, formData: FormData) {
   revalidatePath(`/customers/${customerId}`);
 }
 
-export async function updatePlayerJerseyNumber(
+export async function updatePlayer(
   customerId: string,
   playerId: string,
   formData: FormData
 ) {
-  const jersey_number =
-    String(formData.get("jersey_number") ?? "").trim() || null;
+  const player_name = String(formData.get("player_name") ?? "").trim();
+  if (!player_name) return;
 
   const supabase = await createClient();
   await supabase
     .from("players")
-    .update({ jersey_number })
+    .update({
+      player_name,
+      name_on_back: String(formData.get("name_on_back") ?? "").trim() || null,
+      jersey_size: String(formData.get("jersey_size") ?? "").trim() || null,
+      shorts_size: String(formData.get("shorts_size") ?? "").trim() || null,
+      jersey_number: String(formData.get("jersey_number") ?? "").trim() || null,
+      notes: String(formData.get("notes") ?? "").trim() || null,
+    })
     .eq("id", playerId);
 
   revalidatePath(`/customers/${customerId}`);
+  revalidatePath(`/customers/${customerId}/order`);
 }
 
 export async function deletePlayer(customerId: string, playerId: string) {
@@ -415,4 +426,107 @@ export async function deleteDesign(customerId: string, designId: string) {
 
   revalidatePath(`/customers/${customerId}`);
   revalidatePath(`/customers/${customerId}/order`);
+}
+
+export async function updateOrderTracking(
+  customerId: string,
+  formData: FormData
+) {
+  const deadline = String(formData.get("deadline") ?? "").trim() || null;
+  const order_status = String(
+    formData.get("order_status") ?? "quote_sent"
+  ) as OrderTrackingStatus;
+  const payment_status = String(
+    formData.get("payment_status") ?? "unpaid"
+  ) as PaymentStatus;
+  const payment_due_date =
+    String(formData.get("payment_due_date") ?? "").trim() || null;
+  const shipping_status = String(
+    formData.get("shipping_status") ?? "not_shipped"
+  ) as ShippingStatus;
+  const tracking_url = String(formData.get("tracking_url") ?? "").trim() || null;
+  const tracking_number =
+    String(formData.get("tracking_number") ?? "").trim() || null;
+
+  const supabase = await createClient();
+  await supabase
+    .from("customers")
+    .update({
+      deadline,
+      order_status,
+      payment_status,
+      payment_due_date,
+      shipping_status,
+      tracking_url,
+      tracking_number,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", customerId);
+
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath(`/customers/${customerId}/order`);
+  revalidatePath("/");
+}
+
+export async function uploadInvoice(customerId: string, formData: FormData) {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: existing } = await supabase
+    .from("customers")
+    .select("invoice_storage_path")
+    .eq("id", customerId)
+    .single();
+
+  if (existing?.invoice_storage_path) {
+    await supabase.storage
+      .from("invoices")
+      .remove([existing.invoice_storage_path]);
+  }
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const storagePath = `${user.id}/${customerId}/${Date.now()}-${safeName}`;
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const { error: uploadError } = await supabase.storage
+    .from("invoices")
+    .upload(storagePath, buffer, {
+      contentType: file.type || "application/octet-stream",
+    });
+  if (uploadError) return;
+
+  await supabase
+    .from("customers")
+    .update({ invoice_storage_path: storagePath })
+    .eq("id", customerId);
+
+  revalidatePath(`/customers/${customerId}`);
+}
+
+export async function deleteInvoice(customerId: string) {
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("customers")
+    .select("invoice_storage_path")
+    .eq("id", customerId)
+    .single();
+
+  if (existing?.invoice_storage_path) {
+    await supabase.storage
+      .from("invoices")
+      .remove([existing.invoice_storage_path]);
+  }
+
+  await supabase
+    .from("customers")
+    .update({ invoice_storage_path: null })
+    .eq("id", customerId);
+
+  revalidatePath(`/customers/${customerId}`);
 }

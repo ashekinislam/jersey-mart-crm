@@ -3,6 +3,13 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
   CUSTOMER_STATUSES,
+  ORDER_TRACKING_STATUSES,
+  ORDER_TRACKING_LABELS,
+  PAYMENT_STATUSES,
+  PAYMENT_STATUS_LABELS,
+  PICKUP_ADDRESS,
+  SHIPPING_STATUSES,
+  SHIPPING_STATUS_LABELS,
   STATUS_LABELS,
   type Customer,
   type Design,
@@ -15,14 +22,18 @@ import {
   addPlayer,
   addPricing,
   deleteCustomer,
+  deleteInvoice,
   deleteNote,
   deletePlayer,
   importPlayers,
   updateCustomer,
-  updatePlayerJerseyNumber,
+  updateOrderTracking,
+  updatePlayer,
+  uploadInvoice,
 } from "../../actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { DesignsSection } from "@/components/DesignsSection";
+import { FILE_INPUT_CLASS } from "@/lib/ui";
 
 export default async function CustomerDetailPage({
   params,
@@ -83,12 +94,23 @@ export default async function CustomerDetailPage({
     }
   }
 
+  let invoiceUrl: string | null = null;
+  if (c.invoice_storage_path) {
+    const { data: signed } = await supabase.storage
+      .from("invoices")
+      .createSignedUrl(c.invoice_storage_path, 3600);
+    invoiceUrl = signed?.signedUrl ?? null;
+  }
+
   const updateCustomerWithId = updateCustomer.bind(null, id);
   const addNoteWithId = addNote.bind(null, id);
   const addPricingWithId = addPricing.bind(null, id);
   const importPlayersWithId = importPlayers.bind(null, id);
   const addPlayerWithId = addPlayer.bind(null, id);
   const deleteCustomerWithId = deleteCustomer.bind(null, id);
+  const updateOrderTrackingWithId = updateOrderTracking.bind(null, id);
+  const uploadInvoiceWithId = uploadInvoice.bind(null, id);
+  const deleteInvoiceWithId = deleteInvoice.bind(null, id);
 
   return (
     <div className="space-y-6">
@@ -112,9 +134,184 @@ export default async function CustomerDetailPage({
         </div>
       </div>
 
-      {/* Profile */}
+      {/* Order tracking */}
       <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="text-sm font-semibold text-slate-900">Profile</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-900">
+            Order tracking
+          </h2>
+          <button
+            type="submit"
+            form="order-tracking-form"
+            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            Save
+          </button>
+        </div>
+
+        <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-red-700">
+            Deadline
+          </label>
+          <input
+            form="order-tracking-form"
+            type="date"
+            name="deadline"
+            defaultValue={c.deadline ?? ""}
+            className="mt-1 rounded-md border border-red-300 bg-white px-2 py-1 text-lg font-bold text-red-700"
+          />
+        </div>
+
+        <form
+          id="order-tracking-form"
+          action={updateOrderTrackingWithId}
+          className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2"
+        >
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Order status
+            </label>
+            <select
+              name="order_status"
+              defaultValue={c.order_status}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            >
+              {ORDER_TRACKING_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {ORDER_TRACKING_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Payment status
+            </label>
+            <select
+              name="payment_status"
+              defaultValue={c.payment_status}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            >
+              {PAYMENT_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {PAYMENT_STATUS_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Payment due date
+            </label>
+            <input
+              type="date"
+              name="payment_due_date"
+              defaultValue={c.payment_due_date ?? ""}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Shipping status
+            </label>
+            <select
+              name="shipping_status"
+              defaultValue={c.shipping_status}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            >
+              {SHIPPING_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {SHIPPING_STATUS_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Tracking URL
+            </label>
+            <input
+              name="tracking_url"
+              type="url"
+              defaultValue={c.tracking_url ?? ""}
+              placeholder="e.g. https://bdex.com.bd/track/..."
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Tracking number
+            </label>
+            <input
+              name="tracking_number"
+              defaultValue={c.tracking_number ?? ""}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <p className="sm:col-span-2 text-xs text-slate-500">
+            Pickup address (when the customer collects instead of shipping):{" "}
+            {PICKUP_ADDRESS}
+          </p>
+          <div className="sm:col-span-2">
+            <button
+              type="submit"
+              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+
+        <div className="mt-4 border-t border-slate-100 pt-4">
+          <label className="block text-xs font-medium text-slate-600">
+            Invoice (Reckon PDF)
+          </label>
+          <form
+            action={uploadInvoiceWithId}
+            className="mt-1 flex flex-wrap items-center gap-2"
+          >
+            <input
+              type="file"
+              name="file"
+              accept=".pdf,image/*"
+              required
+              className={FILE_INPUT_CLASS}
+            />
+            <button
+              type="submit"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Upload
+            </button>
+          </form>
+          {invoiceUrl && (
+            <div className="mt-2 flex items-center gap-3 text-sm">
+              <a
+                href={invoiceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-slate-900 underline"
+              >
+                View current invoice
+              </a>
+              <form action={deleteInvoiceWithId}>
+                <button
+                  type="submit"
+                  className="text-xs text-slate-400 hover:text-red-600"
+                >
+                  Delete
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Profile */}
+      <details open className="rounded-lg border border-slate-200 bg-white p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+          Profile
+        </summary>
         <form
           action={updateCustomerWithId}
           className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"
@@ -235,7 +432,7 @@ export default async function CustomerDetailPage({
             </button>
           </div>
         </form>
-      </section>
+      </details>
 
       {/* Pricing */}
       <section className="rounded-lg border border-slate-200 bg-white p-4">
@@ -317,7 +514,15 @@ export default async function CustomerDetailPage({
 
       {/* Team order */}
       <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="text-sm font-semibold text-slate-900">Team order</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-900">Team order</h2>
+          <Link
+            href={`/customers/${id}/order`}
+            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            Build supplier order
+          </Link>
+        </div>
         <p className="mt-1 text-xs text-slate-500">
           Import the filled-in Player Order Form (Excel), or add players
           manually below.
@@ -332,88 +537,92 @@ export default async function CustomerDetailPage({
             name="file"
             accept=".xlsx,.xls"
             required
-            className="text-sm"
+            className={FILE_INPUT_CLASS}
           />
           <button
             type="submit"
-            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Import players
           </button>
         </form>
 
         {playerList.length > 0 && (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs text-slate-500">
-                  <th className="pb-2 pr-2">Player</th>
-                  <th className="pb-2 pr-2">Name on back</th>
-                  <th className="pb-2 pr-2">Jersey size</th>
-                  <th className="pb-2 pr-2">Shorts size</th>
-                  <th className="pb-2 pr-2">Notes</th>
-                  <th className="pb-2 pr-2">Jersey #</th>
-                  <th className="pb-2"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {playerList.map((player) => {
-                  const updateJerseyNumberWithIds =
-                    updatePlayerJerseyNumber.bind(null, id, player.id);
-                  const deletePlayerWithIds = deletePlayer.bind(
-                    null,
-                    id,
-                    player.id
-                  );
-                  return (
-                    <tr key={player.id}>
-                      <td className="py-1.5 pr-2">{player.player_name}</td>
-                      <td className="py-1.5 pr-2">
-                        {player.name_on_back ?? "—"}
-                      </td>
-                      <td className="py-1.5 pr-2">
-                        {player.jersey_size ?? "—"}
-                      </td>
-                      <td className="py-1.5 pr-2">
-                        {player.shorts_size ?? "—"}
-                      </td>
-                      <td className="py-1.5 pr-2 max-w-[12rem] truncate" title={player.notes ?? undefined}>
-                        {player.notes ?? "—"}
-                      </td>
-                      <td className="py-1.5 pr-2">
-                        <form
-                          action={updateJerseyNumberWithIds}
-                          className="flex items-center gap-1"
-                        >
-                          <input
-                            name="jersey_number"
-                            defaultValue={player.jersey_number ?? ""}
-                            placeholder="#"
-                            className="w-14 rounded-md border border-slate-300 px-2 py-1 text-sm"
-                          />
-                          <button
-                            type="submit"
-                            className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
-                          >
-                            Save
-                          </button>
-                        </form>
-                      </td>
-                      <td className="py-1.5 text-right">
-                        <form action={deletePlayerWithIds}>
-                          <button
-                            type="submit"
-                            className="text-xs text-slate-400 hover:text-red-600"
-                          >
-                            Delete
-                          </button>
-                        </form>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {playerList.map((player) => {
+              const updatePlayerWithIds = updatePlayer.bind(
+                null,
+                id,
+                player.id
+              );
+              const deletePlayerWithIds = deletePlayer.bind(
+                null,
+                id,
+                player.id
+              );
+              return (
+                <form
+                  key={player.id}
+                  action={updatePlayerWithIds}
+                  className="rounded-md border border-slate-100 bg-slate-50 p-3 space-y-1.5"
+                >
+                  <input
+                    name="player_name"
+                    defaultValue={player.player_name}
+                    placeholder="Player name"
+                    required
+                    className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm font-medium"
+                  />
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <input
+                      name="name_on_back"
+                      defaultValue={player.name_on_back ?? ""}
+                      placeholder="Name on back"
+                      className="w-full rounded-md border border-slate-300 px-2 py-1 text-xs"
+                    />
+                    <input
+                      name="jersey_number"
+                      defaultValue={player.jersey_number ?? ""}
+                      placeholder="Jersey #"
+                      className="w-full rounded-md border border-slate-300 px-2 py-1 text-xs"
+                    />
+                    <input
+                      name="jersey_size"
+                      defaultValue={player.jersey_size ?? ""}
+                      placeholder="Jersey size"
+                      className="w-full rounded-md border border-slate-300 px-2 py-1 text-xs"
+                    />
+                    <input
+                      name="shorts_size"
+                      defaultValue={player.shorts_size ?? ""}
+                      placeholder="Shorts size"
+                      className="w-full rounded-md border border-slate-300 px-2 py-1 text-xs"
+                    />
+                  </div>
+                  <input
+                    name="notes"
+                    defaultValue={player.notes ?? ""}
+                    placeholder="Notes"
+                    className="w-full rounded-md border border-slate-300 px-2 py-1 text-xs"
+                  />
+                  <div className="flex items-center justify-between pt-0.5">
+                    <button
+                      type="submit"
+                      className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-white"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="submit"
+                      formAction={deletePlayerWithIds}
+                      className="text-xs text-slate-400 hover:text-red-600"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </form>
+              );
+            })}
           </div>
         )}
 
