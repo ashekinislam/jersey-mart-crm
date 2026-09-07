@@ -9,12 +9,7 @@ import type {
 } from "@/lib/types";
 import { markOrderSent } from "../../../actions";
 import { CopyButton } from "@/components/CopyButton";
-import {
-  buildAdultsSupplierText,
-  buildKidsSupplierText,
-  buildShortsTally,
-  unknownSizePlayers,
-} from "@/lib/supplierFormat";
+import { buildSupplierText } from "@/lib/supplierFormat";
 
 function buildSummary(
   customer: Customer,
@@ -117,10 +112,7 @@ export default async function BuildOrderPage({
   const summary = buildSummary(c, noteList, pricingList);
   const markSent = markOrderSent.bind(null, id, summary);
 
-  const kidsText = buildKidsSupplierText(playerList);
-  const adultsText = buildAdultsSupplierText(playerList);
-  const shortsTally = buildShortsTally(playerList);
-  const unknownPlayers = unknownSizePlayers(playerList);
+  const teamText = buildSupplierText(playerList);
 
   return (
     <div className="space-y-6">
@@ -152,65 +144,15 @@ export default async function BuildOrderPage({
 
       {playerList.length > 0 && (
         <section className="rounded-lg border border-slate-200 bg-white p-4">
-          <h2 className="text-sm font-semibold text-slate-900">
-            Team order (supplier format)
-          </h2>
-
-          {kidsText && (
-            <div className="mt-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-slate-600">
-                  Kids sizes
-                </p>
-                <CopyButton text={kidsText} />
-              </div>
-              <pre className="mt-1 whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm text-slate-800">
-                {kidsText}
-              </pre>
-            </div>
-          )}
-
-          {adultsText && (
-            <div className="mt-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-slate-600">
-                  Adult sizes
-                </p>
-                <CopyButton text={adultsText} />
-              </div>
-              <pre className="mt-1 whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm text-slate-800">
-                {adultsText}
-              </pre>
-            </div>
-          )}
-
-          {shortsTally && (
-            <div className="mt-3">
-              <p className="text-xs font-medium text-slate-600">
-                Shorts sizes
-              </p>
-              <p className="mt-1 rounded-md bg-slate-50 p-3 text-sm text-slate-800">
-                {shortsTally}
-              </p>
-            </div>
-          )}
-
-          {unknownPlayers.length > 0 && (
-            <div className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800">
-              <p className="font-medium">
-                {unknownPlayers.length} player(s) have a size I couldn&apos;t
-                classify as kids or adult — check these manually:
-              </p>
-              <ul className="mt-1 list-disc pl-5">
-                {unknownPlayers.map((p) => (
-                  <li key={p.id}>
-                    {p.player_name} — &quot;{p.jersey_size || "(no size)"}
-                    &quot;
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-900">
+              Team order (supplier format)
+            </h2>
+            <CopyButton text={teamText} />
+          </div>
+          <pre className="mt-3 whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm text-slate-800">
+            {teamText}
+          </pre>
         </section>
       )}
 

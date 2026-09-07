@@ -159,6 +159,7 @@ export async function markOrderSent(customerId: string, summaryText: string) {
 }
 
 const PLAYER_COLUMN_HEADERS: Record<string, string> = {
+  "no.": "jersey_number",
   "player name": "player_name",
   "name on back": "name_on_back",
   size: "jersey_size",
@@ -227,6 +228,7 @@ export async function importPlayers(customerId: string, formData: FormData) {
       name_on_back: cell("name_on_back"),
       jersey_size: cell("jersey_size"),
       shorts_size: cell("shorts_size"),
+      jersey_number: cell("jersey_number"),
     });
   }
 
