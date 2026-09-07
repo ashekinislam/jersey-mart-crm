@@ -16,7 +16,7 @@ function formattedSize(size: string | null | undefined): string {
   return isKidsSize(size) ? kidsAgeBand(size) : (size ?? "").trim();
 }
 
-/** One line per player: "1. NAME-SIZE বছর বয়স-JERSEY#". */
+/** One line per player: "1. NAME-SIZE বছর বয়স-JERSEY#" for kids, "1. NAME-SIZE-JERSEY#" for adults. */
 export function buildSupplierText(players: Player[]): string {
   if (players.length === 0) return "";
   return players
@@ -24,7 +24,8 @@ export function buildSupplierText(players: Player[]): string {
       const name = p.name_on_back || p.player_name;
       const size = formattedSize(p.jersey_size) || "(no size)";
       const number = p.jersey_number || "?";
-      return `${i + 1}. ${name}-${size} বছর বয়স-${number}`;
+      const ageLabel = isKidsSize(p.jersey_size) ? " বছর বয়স" : "";
+      return `${i + 1}. ${name}-${size}${ageLabel}-${number}`;
     })
     .join("\n");
 }

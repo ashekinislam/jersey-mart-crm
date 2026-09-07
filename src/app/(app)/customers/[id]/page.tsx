@@ -13,12 +13,14 @@ import {
   addNote,
   addPlayer,
   addPricing,
+  deleteCustomer,
   deleteNote,
   deletePlayer,
   importPlayers,
   updateCustomer,
   updatePlayerJerseyNumber,
 } from "../../actions";
+import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 
 export default async function CustomerDetailPage({
   params,
@@ -60,17 +62,28 @@ export default async function CustomerDetailPage({
   const addPricingWithId = addPricing.bind(null, id);
   const importPlayersWithId = importPlayers.bind(null, id);
   const addPlayerWithId = addPlayer.bind(null, id);
+  const deleteCustomerWithId = deleteCustomer.bind(null, id);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-slate-900">{c.name}</h1>
-        <Link
-          href={`/customers/${id}/order`}
-          className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
-        >
-          Build supplier order
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/customers/${id}/order`}
+            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            Build supplier order
+          </Link>
+          <form action={deleteCustomerWithId}>
+            <ConfirmSubmitButton
+              confirmMessage={`Delete ${c.name}? This removes all their notes, pricing, players, and parcels too. This can't be undone.`}
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-500 hover:border-red-300 hover:text-red-600"
+            >
+              Delete customer
+            </ConfirmSubmitButton>
+          </form>
+        </div>
       </div>
 
       {/* Profile */}

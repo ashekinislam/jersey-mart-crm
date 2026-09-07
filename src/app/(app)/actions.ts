@@ -88,6 +88,14 @@ export async function updateCustomer(customerId: string, formData: FormData) {
   revalidatePath("/");
 }
 
+export async function deleteCustomer(customerId: string) {
+  const supabase = await createClient();
+  await supabase.from("customers").delete().eq("id", customerId);
+
+  revalidatePath("/");
+  redirect("/");
+}
+
 export async function addNote(customerId: string, formData: FormData) {
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return;
