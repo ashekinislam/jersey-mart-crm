@@ -6,9 +6,19 @@ import {
   STATUS_LABELS,
   type Customer,
   type Note,
+  type Player,
   type PricingEntry,
 } from "@/lib/types";
-import { addNote, addPricing, deleteNote, updateCustomer } from "../../actions";
+import {
+  addNote,
+  addPlayer,
+  addPricing,
+  deleteNote,
+  deletePlayer,
+  importPlayers,
+  updateCustomer,
+  updatePlayerJerseyNumber,
+} from "../../actions";
 
 export default async function CustomerDetailPage({
   params,
@@ -18,7 +28,7 @@ export default async function CustomerDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: customer }, { data: notes }, { data: pricing }] =
+  const [{ data: customer }, { data: notes }, { data: pricing }, { data: players }] =
     await Promise.all([
       supabase.from("customers").select("*").eq("id", id).single(),
       supabase
@@ -31,6 +41,11 @@ export default async function CustomerDetailPage({
         .select("*")
         .eq("customer_id", id)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("players")
+        .select("*")
+        .eq("customer_id", id)
+        .order("created_at", { ascending: true }),
     ]);
 
   if (!customer) notFound();
@@ -38,10 +53,13 @@ export default async function CustomerDetailPage({
   const c = customer as Customer;
   const noteList = (notes ?? []) as Note[];
   const pricingList = (pricing ?? []) as PricingEntry[];
+  const playerList = (players ?? []) as Player[];
 
   const updateCustomerWithId = updateCustomer.bind(null, id);
   const addNoteWithId = addNote.bind(null, id);
   const addPricingWithId = addPricing.bind(null, id);
+  const importPlayersWithId = importPlayers.bind(null, id);
+  const addPlayerWithId = addPlayer.bind(null, id);
 
   return (
     <div className="space-y-6">
@@ -256,6 +274,169 @@ export default async function CustomerDetailPage({
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Team order */}
+      <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-slate-900">Team order</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Import the filled-in Player Order Form (Excel), or add players
+          manually below.
+        </p>
+
+        <form
+          action={importPlayersWithId}
+          className="mt-3 flex flex-wrap items-center gap-2"
+        >
+          <input
+            type="file"
+            name="file"
+            accept=".xlsx,.xls"
+            required
+            className="text-sm"
+          />
+          <button
+            type="submit"
+            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            Import players
+          </button>
+        </form>
+
+        {playerList.length > 0 && (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-xs text-slate-500">
+                  <th className="pb-2 pr-2">Player</th>
+                  <th className="pb-2 pr-2">Name on back</th>
+                  <th className="pb-2 pr-2">Jersey size</th>
+                  <th className="pb-2 pr-2">Shorts size</th>
+                  <th className="pb-2 pr-2">Jersey #</th>
+                  <th className="pb-2"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {playerList.map((player) => {
+                  const updateJerseyNumberWithIds =
+                    updatePlayerJerseyNumber.bind(null, id, player.id);
+                  const deletePlayerWithIds = deletePlayer.bind(
+                    null,
+                    id,
+                    player.id
+                  );
+                  return (
+                    <tr key={player.id}>
+                      <td className="py-1.5 pr-2">{player.player_name}</td>
+                      <td className="py-1.5 pr-2">
+                        {player.name_on_back ?? "—"}
+                      </td>
+                      <td className="py-1.5 pr-2">
+                        {player.jersey_size ?? "—"}
+                      </td>
+                      <td className="py-1.5 pr-2">
+                        {player.shorts_size ?? "—"}
+                      </td>
+                      <td className="py-1.5 pr-2">
+                        <form
+                          action={updateJerseyNumberWithIds}
+                          className="flex items-center gap-1"
+                        >
+                          <input
+                            name="jersey_number"
+                            defaultValue={player.jersey_number ?? ""}
+                            placeholder="#"
+                            className="w-14 rounded-md border border-slate-300 px-2 py-1 text-sm"
+                          />
+                          <button
+                            type="submit"
+                            className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+                          >
+                            Save
+                          </button>
+                        </form>
+                      </td>
+                      <td className="py-1.5 text-right">
+                        <form action={deletePlayerWithIds}>
+                          <button
+                            type="submit"
+                            className="text-xs text-slate-400 hover:text-red-600"
+                          >
+                            Delete
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <details className="mt-4">
+          <summary className="cursor-pointer text-xs font-medium text-slate-600">
+            Add a player manually
+          </summary>
+          <form
+            action={addPlayerWithId}
+            className="mt-2 flex flex-wrap items-end gap-2"
+          >
+            <div>
+              <label className="block text-xs font-medium text-slate-600">
+                Player name
+              </label>
+              <input
+                name="player_name"
+                required
+                className="mt-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600">
+                Name on back
+              </label>
+              <input
+                name="name_on_back"
+                className="mt-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600">
+                Jersey size
+              </label>
+              <input
+                name="jersey_size"
+                placeholder="e.g. Kids 12 or L"
+                className="mt-1 w-28 rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600">
+                Shorts size
+              </label>
+              <input
+                name="shorts_size"
+                className="mt-1 w-28 rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600">
+                Jersey #
+              </label>
+              <input
+                name="jersey_number"
+                className="mt-1 w-16 rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              />
+            </div>
+            <button
+              type="submit"
+              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              Add player
+            </button>
+          </form>
+        </details>
       </section>
 
       {/* Notes */}

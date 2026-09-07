@@ -1,8 +1,20 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Customer, Note, PricingEntry, SupplierOrder } from "@/lib/types";
+import type {
+  Customer,
+  Note,
+  Player,
+  PricingEntry,
+  SupplierOrder,
+} from "@/lib/types";
 import { markOrderSent } from "../../../actions";
 import { CopyButton } from "@/components/CopyButton";
+import {
+  buildAdultsSupplierText,
+  buildKidsSupplierText,
+  buildShortsTally,
+  unknownSizePlayers,
+} from "@/lib/supplierFormat";
 
 function buildSummary(
   customer: Customer,
@@ -63,26 +75,36 @@ export default async function BuildOrderPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: customer }, { data: notes }, { data: pricing }, { data: pastOrders }] =
-    await Promise.all([
-      supabase.from("customers").select("*").eq("id", id).single(),
-      supabase
-        .from("notes")
-        .select("*")
-        .eq("customer_id", id)
-        .eq("is_order_relevant", true)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("pricing")
-        .select("*")
-        .eq("customer_id", id)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("orders")
-        .select("*")
-        .eq("customer_id", id)
-        .order("created_at", { ascending: false }),
-    ]);
+  const [
+    { data: customer },
+    { data: notes },
+    { data: pricing },
+    { data: pastOrders },
+    { data: players },
+  ] = await Promise.all([
+    supabase.from("customers").select("*").eq("id", id).single(),
+    supabase
+      .from("notes")
+      .select("*")
+      .eq("customer_id", id)
+      .eq("is_order_relevant", true)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("pricing")
+      .select("*")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("orders")
+      .select("*")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("players")
+      .select("*")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: true }),
+  ]);
 
   if (!customer) notFound();
 
@@ -90,9 +112,15 @@ export default async function BuildOrderPage({
   const noteList = (notes ?? []) as Note[];
   const pricingList = (pricing ?? []) as PricingEntry[];
   const orderList = (pastOrders ?? []) as SupplierOrder[];
+  const playerList = (players ?? []) as Player[];
 
   const summary = buildSummary(c, noteList, pricingList);
   const markSent = markOrderSent.bind(null, id, summary);
+
+  const kidsText = buildKidsSupplierText(playerList);
+  const adultsText = buildAdultsSupplierText(playerList);
+  const shortsTally = buildShortsTally(playerList);
+  const unknownPlayers = unknownSizePlayers(playerList);
 
   return (
     <div className="space-y-6">
@@ -121,6 +149,70 @@ export default async function BuildOrderPage({
           {summary}
         </pre>
       </section>
+
+      {playerList.length > 0 && (
+        <section className="rounded-lg border border-slate-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-slate-900">
+            Team order (supplier format)
+          </h2>
+
+          {kidsText && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-slate-600">
+                  Kids sizes
+                </p>
+                <CopyButton text={kidsText} />
+              </div>
+              <pre className="mt-1 whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm text-slate-800">
+                {kidsText}
+              </pre>
+            </div>
+          )}
+
+          {adultsText && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-slate-600">
+                  Adult sizes
+                </p>
+                <CopyButton text={adultsText} />
+              </div>
+              <pre className="mt-1 whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm text-slate-800">
+                {adultsText}
+              </pre>
+            </div>
+          )}
+
+          {shortsTally && (
+            <div className="mt-3">
+              <p className="text-xs font-medium text-slate-600">
+                Shorts sizes
+              </p>
+              <p className="mt-1 rounded-md bg-slate-50 p-3 text-sm text-slate-800">
+                {shortsTally}
+              </p>
+            </div>
+          )}
+
+          {unknownPlayers.length > 0 && (
+            <div className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+              <p className="font-medium">
+                {unknownPlayers.length} player(s) have a size I couldn&apos;t
+                classify as kids or adult — check these manually:
+              </p>
+              <ul className="mt-1 list-disc pl-5">
+                {unknownPlayers.map((p) => (
+                  <li key={p.id}>
+                    {p.player_name} — &quot;{p.jersey_size || "(no size)"}
+                    &quot;
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
 
       {orderList.length > 0 && (
         <section className="rounded-lg border border-slate-200 bg-white p-4">

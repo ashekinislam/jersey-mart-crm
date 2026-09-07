@@ -5,9 +5,17 @@ export function Header({ email }: { email: string }) {
   return (
     <header className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-        <Link href="/" className="font-semibold text-slate-900">
-          Jersey Mart CRM
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/" className="font-semibold text-slate-900">
+            Jersey Mart CRM
+          </Link>
+          <Link
+            href="/dispatch"
+            className="text-sm text-slate-600 hover:text-slate-900"
+          >
+            Dispatch
+          </Link>
+        </div>
         <div className="flex items-center gap-3 text-sm text-slate-500">
           <span className="hidden sm:inline">{email}</span>
           <form action={signOut}>

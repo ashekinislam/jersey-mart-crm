@@ -45,6 +45,27 @@ export interface PricingEntry {
   created_at: string;
 }
 
+export interface Player {
+  id: string;
+  owner_id: string;
+  customer_id: string;
+  player_name: string;
+  name_on_back: string | null;
+  jersey_size: string | null;
+  shorts_size: string | null;
+  jersey_number: string | null;
+  created_at: string;
+}
+
+export interface Parcel {
+  id: string;
+  owner_id: string;
+  customer_id: string;
+  contents: string;
+  dispatched_at: string | null;
+  created_at: string;
+}
+
 export interface SupplierOrder {
   id: string;
   owner_id: string;
