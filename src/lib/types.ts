@@ -54,6 +54,7 @@ export interface Player {
   jersey_size: string | null;
   shorts_size: string | null;
   jersey_number: string | null;
+  notes: string | null;
   created_at: string;
 }
 

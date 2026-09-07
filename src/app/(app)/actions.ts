@@ -159,11 +159,17 @@ export async function markOrderSent(customerId: string, summaryText: string) {
 }
 
 const PLAYER_COLUMN_HEADERS: Record<string, string> = {
-  "no.": "jersey_number",
+  "jersey no.": "jersey_number",
+  "jersey no": "jersey_number",
+  "jersey number": "jersey_number",
+  "jersey #": "jersey_number",
   "player name": "player_name",
   "name on back": "name_on_back",
   size: "jersey_size",
   "shorts size": "shorts_size",
+  "notes / special request": "notes",
+  "notes/special request": "notes",
+  notes: "notes",
 };
 
 export async function importPlayers(customerId: string, formData: FormData) {
@@ -229,6 +235,7 @@ export async function importPlayers(customerId: string, formData: FormData) {
       jersey_size: cell("jersey_size"),
       shorts_size: cell("shorts_size"),
       jersey_number: cell("jersey_number"),
+      notes: cell("notes"),
     });
   }
 

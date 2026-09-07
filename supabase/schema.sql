@@ -65,6 +65,7 @@ create table if not exists players (
   jersey_size text,
   shorts_size text,
   jersey_number text,
+  notes text,
   created_at timestamptz not null default now()
 );
 

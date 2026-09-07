@@ -312,6 +312,7 @@ export default async function CustomerDetailPage({
                   <th className="pb-2 pr-2">Name on back</th>
                   <th className="pb-2 pr-2">Jersey size</th>
                   <th className="pb-2 pr-2">Shorts size</th>
+                  <th className="pb-2 pr-2">Notes</th>
                   <th className="pb-2 pr-2">Jersey #</th>
                   <th className="pb-2"></th>
                 </tr>
@@ -336,6 +337,9 @@ export default async function CustomerDetailPage({
                       </td>
                       <td className="py-1.5 pr-2">
                         {player.shorts_size ?? "—"}
+                      </td>
+                      <td className="py-1.5 pr-2 max-w-[12rem] truncate" title={player.notes ?? undefined}>
+                        {player.notes ?? "—"}
                       </td>
                       <td className="py-1.5 pr-2">
                         <form
