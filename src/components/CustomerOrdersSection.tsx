@@ -45,7 +45,7 @@ export async function CustomerOrdersSection({
 
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <h2 className="text-sm font-semibold text-slate-900">
             Order: {order.label || new Date(order.created_at).toLocaleDateString()}
           </h2>
@@ -56,6 +56,14 @@ export async function CustomerOrdersSection({
             >
               Build supplier order
             </Link>
+            <form action={addOrderWithId}>
+              <button
+                type="submit"
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                + New order
+              </button>
+            </form>
             <form action={deleteOrderWithIds}>
               <ConfirmSubmitButton
                 confirmMessage="Delete this order? This removes all its teams, players, designs, and history. This can't be undone."
@@ -73,33 +81,6 @@ export async function CustomerOrdersSection({
           invoiceUrl={invoiceUrl}
         />
         <OrderTeamsSection customerId={customerId} orderId={order.id} />
-
-        <details className="rounded-lg border border-slate-200 bg-white p-4">
-          <summary className="cursor-pointer text-xs font-medium text-slate-600">
-            + Start another order for this customer
-          </summary>
-          <form
-            action={addOrderWithId}
-            className="mt-2 flex flex-wrap items-end gap-2"
-          >
-            <div className="min-w-[12rem] flex-1">
-              <label className="block text-xs font-medium text-slate-600">
-                New order label (optional)
-              </label>
-              <input
-                name="label"
-                placeholder="e.g. Spring 2026 kit run"
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-              />
-            </div>
-            <button
-              type="submit"
-              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
-            >
-              + New order
-            </button>
-          </form>
-        </details>
       </div>
     );
   }

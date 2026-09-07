@@ -63,18 +63,37 @@ export async function OrderTeamsSection({
 
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <h2 className="text-sm font-semibold text-slate-900">
             Team: {team.team_name}
           </h2>
-          <form action={deleteTeamWithIds}>
-            <ConfirmSubmitButton
-              confirmMessage={`Delete ${team.team_name}? This removes its roster and designs too.`}
-              className="text-xs text-slate-400 hover:text-red-600"
+          <div className="flex items-center gap-2">
+            <form
+              action={addTeamWithIds}
+              className="flex items-center gap-1.5"
             >
-              Delete team
-            </ConfirmSubmitButton>
-          </form>
+              <input
+                name="team_name"
+                required
+                placeholder="New team name"
+                className="w-32 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+              />
+              <button
+                type="submit"
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                + Add team
+              </button>
+            </form>
+            <form action={deleteTeamWithIds}>
+              <ConfirmSubmitButton
+                confirmMessage={`Delete ${team.team_name}? This removes its roster and designs too.`}
+                className="text-xs text-slate-400 hover:text-red-600"
+              >
+                Delete team
+              </ConfirmSubmitButton>
+            </form>
+          </div>
         </div>
         <TeamRoster
           customerId={customerId}

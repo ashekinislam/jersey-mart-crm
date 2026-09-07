@@ -72,8 +72,6 @@ export default async function CustomerDetailPage({
         </form>
       </div>
 
-      <CustomerOrdersSection customerId={id} />
-
       {/* Profile */}
       <details open className="rounded-lg border border-slate-200 bg-white p-4">
         <summary className="cursor-pointer text-sm font-semibold text-slate-900">
@@ -211,6 +209,8 @@ export default async function CustomerDetailPage({
           </div>
         </form>
       </details>
+
+      <CustomerOrdersSection customerId={id} />
 
       {/* Pricing */}
       <section className="rounded-lg border border-slate-200 bg-white p-4">
