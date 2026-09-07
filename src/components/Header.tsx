@@ -16,6 +16,12 @@ export function Header({ email }: { email: string }) {
             Customers
           </Link>
           <Link
+            href="/leads"
+            className="text-sm text-slate-600 hover:text-slate-900"
+          >
+            Leads
+          </Link>
+          <Link
             href="/dispatch"
             className="text-sm text-slate-600 hover:text-slate-900"
           >

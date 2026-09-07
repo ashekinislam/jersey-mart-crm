@@ -1,11 +1,21 @@
-export type ContactChannel = "facebook" | "email" | "phone" | "other";
+export type ContactChannel =
+  | "facebook"
+  | "instagram"
+  | "email"
+  | "phone"
+  | "other";
 export type CustomerStatus =
   | "lead"
   | "potential"
   | "active"
   | "repeat"
   | "inactive";
-export type NoteSource = "facebook" | "email" | "call" | "other";
+export type NoteSource =
+  | "facebook"
+  | "instagram"
+  | "email"
+  | "call"
+  | "other";
 export type OrderSummaryStatus = "draft" | "sent" | "fulfilled";
 
 export type OrderTrackingStatus =
@@ -253,3 +263,42 @@ export const STATUS_COLORS: Record<CustomerStatus, string> = {
   repeat: "bg-indigo-100 text-indigo-800",
   inactive: "bg-red-100 text-red-700",
 };
+
+export type MetaPlatform = "facebook" | "instagram";
+export type MessageDirection = "inbound" | "outbound";
+
+export const META_PLATFORMS: MetaPlatform[] = ["facebook", "instagram"];
+
+export const META_PLATFORM_LABELS: Record<MetaPlatform, string> = {
+  facebook: "Facebook Messenger",
+  instagram: "Instagram DM",
+};
+
+export const META_PLATFORM_COLORS: Record<MetaPlatform, string> = {
+  facebook: "bg-sky-100 text-sky-800",
+  instagram: "bg-fuchsia-100 text-fuchsia-800",
+};
+
+export interface MetaConversation {
+  id: string;
+  owner_id: string;
+  platform: MetaPlatform;
+  external_user_id: string;
+  external_user_name: string | null;
+  customer_id: string | null;
+  last_message_at: string | null;
+  created_at: string;
+}
+
+export interface MetaMessage {
+  id: string;
+  owner_id: string;
+  conversation_id: string;
+  meta_message_id: string;
+  direction: MessageDirection;
+  body: string | null;
+  attachment_type: "image" | "other" | null;
+  attachment_storage_path: string | null;
+  sent_at: string;
+  created_at: string;
+}

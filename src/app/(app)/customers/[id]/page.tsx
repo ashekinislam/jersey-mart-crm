@@ -17,6 +17,7 @@ import {
 } from "../../actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { CustomerOrdersSection } from "@/components/CustomerOrdersSection";
+import { MetaChatSection } from "@/components/MetaChatSection";
 
 export default async function CustomerDetailPage({
   params,
@@ -118,6 +119,7 @@ export default async function CustomerDetailPage({
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
             >
               <option value="facebook">Facebook</option>
+              <option value="instagram">Instagram</option>
               <option value="email">Email</option>
               <option value="phone">Phone</option>
               <option value="other">Other</option>
@@ -211,6 +213,8 @@ export default async function CustomerDetailPage({
       </details>
 
       <CustomerOrdersSection customerId={id} />
+
+      <MetaChatSection customerId={id} />
 
       {/* Pricing */}
       <section className="rounded-lg border border-slate-200 bg-white p-4">
@@ -310,6 +314,7 @@ export default async function CustomerDetailPage({
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
             >
               <option value="facebook">Facebook</option>
+              <option value="instagram">Instagram</option>
               <option value="email">Email</option>
               <option value="call">Call</option>
               <option value="other">Other</option>

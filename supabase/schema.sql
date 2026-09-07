@@ -7,7 +7,7 @@ create table if not exists customers (
   owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   name text not null,
   contact_channel text not null default 'facebook'
-    check (contact_channel in ('facebook','email','phone','other')),
+    check (contact_channel in ('facebook','instagram','email','phone','other')),
   contact_handle text,
   phone text,
   email text,
@@ -56,7 +56,7 @@ create table if not exists notes (
   order_id uuid references orders(id) on delete set null,
   body text not null,
   source text not null default 'facebook'
-    check (source in ('facebook','email','call','other')),
+    check (source in ('facebook','instagram','email','call','other')),
   created_at timestamptz not null default now()
 );
 
@@ -117,6 +117,32 @@ create table if not exists designs (
   created_at timestamptz not null default now()
 );
 
+create table if not exists meta_conversations (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  platform text not null check (platform in ('facebook','instagram')),
+  external_user_id text not null,
+  external_user_name text,
+  customer_id uuid references customers(id) on delete set null,
+  last_message_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (owner_id, platform, external_user_id)
+);
+
+create table if not exists meta_messages (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  conversation_id uuid not null references meta_conversations(id) on delete cascade,
+  meta_message_id text not null,
+  direction text not null check (direction in ('inbound','outbound')),
+  body text,
+  attachment_type text check (attachment_type in ('image','other')),
+  attachment_storage_path text,
+  sent_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  unique (owner_id, meta_message_id)
+);
+
 create index if not exists orders_customer_id_idx on orders(customer_id);
 create index if not exists teams_order_id_idx on teams(order_id);
 create index if not exists notes_customer_id_idx on notes(customer_id);
@@ -127,6 +153,9 @@ create index if not exists players_team_id_idx on players(team_id);
 create index if not exists parcels_customer_id_idx on parcels(customer_id);
 create index if not exists parcels_dispatched_at_idx on parcels(dispatched_at);
 create index if not exists designs_team_id_idx on designs(team_id);
+create index if not exists meta_conversations_customer_id_idx on meta_conversations(customer_id);
+create index if not exists meta_conversations_owner_id_idx on meta_conversations(owner_id);
+create index if not exists meta_messages_conversation_id_idx on meta_messages(conversation_id);
 
 alter table customers enable row level security;
 alter table orders enable row level security;
@@ -137,6 +166,8 @@ alter table order_summaries enable row level security;
 alter table players enable row level security;
 alter table parcels enable row level security;
 alter table designs enable row level security;
+alter table meta_conversations enable row level security;
+alter table meta_messages enable row level security;
 
 create policy "owner_all customers" on customers
   for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
@@ -155,6 +186,10 @@ create policy "owner_all players" on players
 create policy "owner_all parcels" on parcels
   for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 create policy "owner_all designs" on designs
+  for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+create policy "owner_all meta_conversations" on meta_conversations
+  for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+create policy "owner_all meta_messages" on meta_messages
   for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 
 -- Storage bucket for design images (private — not publicly readable)
@@ -200,5 +235,28 @@ create policy "owner_insert invoices bucket" on storage.objects
 create policy "owner_delete invoices bucket" on storage.objects
   for delete using (
     bucket_id = 'invoices'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- Storage bucket for chat-image attachments (private — not publicly readable)
+insert into storage.buckets (id, name, public)
+values ('meta-attachments', 'meta-attachments', false)
+on conflict (id) do nothing;
+
+create policy "owner_select meta_attachments bucket" on storage.objects
+  for select using (
+    bucket_id = 'meta-attachments'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+create policy "owner_insert meta_attachments bucket" on storage.objects
+  for insert with check (
+    bucket_id = 'meta-attachments'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+create policy "owner_delete meta_attachments bucket" on storage.objects
+  for delete using (
+    bucket_id = 'meta-attachments'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
