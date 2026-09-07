@@ -1,102 +1,119 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
-  CUSTOMER_STATUSES,
-  STATUS_COLORS,
-  STATUS_LABELS,
+  ORDER_TRACKING_STATUSES,
+  ORDER_TRACKING_LABELS,
+  PAYMENT_STATUSES,
+  PAYMENT_STATUS_LABELS,
+  SHIPPING_STATUSES,
+  SHIPPING_STATUS_LABELS,
   type Customer,
+  type Order,
 } from "@/lib/types";
+import { BreakdownCard, StatTile } from "@/components/StatBreakdown";
 
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string; status?: string }>;
-}) {
-  const { q = "", status = "all" } = await searchParams;
+const CHANNEL_LABELS: Record<string, string> = {
+  facebook: "Facebook",
+  email: "Email",
+  phone: "Phone",
+  other: "Other",
+};
 
+export default async function DashboardPage() {
   const supabase = await createClient();
-  let query = supabase
-    .from("customers")
-    .select("*")
-    .order("updated_at", { ascending: false });
 
-  if (q) query = query.ilike("name", `%${q}%`);
-  if (status !== "all") query = query.eq("status", status);
+  const [{ data: customers }, { data: orders }] = await Promise.all([
+    supabase.from("customers").select("id, state, contact_channel"),
+    supabase
+      .from("orders")
+      .select("id, order_status, payment_status, shipping_status, payment_due_date"),
+  ]);
 
-  const { data: customers } = await query;
-  const list = (customers ?? []) as Customer[];
+  const customerList = (customers ?? []) as Pick<
+    Customer,
+    "id" | "state" | "contact_channel"
+  >[];
+  const orderList = (orders ?? []) as Pick<
+    Order,
+    "id" | "order_status" | "payment_status" | "shipping_status" | "payment_due_date"
+  >[];
+
+  const openOrders = orderList.filter(
+    (o) => o.order_status !== "delivered" && o.order_status !== "cancelled"
+  ).length;
+
+  const unpaidOrders = orderList.filter(
+    (o) => o.payment_status !== "paid"
+  ).length;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const overdue = orderList.filter(
+    (o) =>
+      o.payment_status !== "paid" &&
+      o.payment_due_date !== null &&
+      o.payment_due_date < today
+  ).length;
+
+  const orderStatusItems = ORDER_TRACKING_STATUSES.map((s) => ({
+    label: ORDER_TRACKING_LABELS[s],
+    count: orderList.filter((o) => o.order_status === s).length,
+  }));
+
+  const paymentStatusItems = PAYMENT_STATUSES.map((s) => ({
+    label: PAYMENT_STATUS_LABELS[s],
+    count: orderList.filter((o) => o.payment_status === s).length,
+  }));
+
+  const shippingStatusItems = SHIPPING_STATUSES.map((s) => ({
+    label: SHIPPING_STATUS_LABELS[s],
+    count: orderList.filter((o) => o.shipping_status === s).length,
+  }));
+
+  const stateMap = new Map<string, number>();
+  for (const c of customerList) {
+    const key = c.state?.trim() || "Not set";
+    stateMap.set(key, (stateMap.get(key) ?? 0) + 1);
+  }
+  const stateItems = [...stateMap.entries()].map(([label, count]) => ({
+    label,
+    count,
+  }));
+
+  const channelMap = new Map<string, number>();
+  for (const c of customerList) {
+    const key = c.contact_channel;
+    channelMap.set(key, (channelMap.get(key) ?? 0) + 1);
+  }
+  const channelItems = [...channelMap.entries()].map(([channel, count]) => ({
+    label: CHANNEL_LABELS[channel] ?? channel,
+    count,
+  }));
 
   return (
-    <div>
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-slate-900">Customers</h1>
+        <h1 className="text-lg font-semibold text-slate-900">Dashboard</h1>
         <Link
-          href="/customers/new"
+          href="/customers"
           className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
         >
-          + Add customer
+          View customers
         </Link>
       </div>
 
-      <form className="mt-4 flex flex-wrap gap-2" method="get">
-        <input
-          type="text"
-          name="q"
-          defaultValue={q}
-          placeholder="Search by name..."
-          className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-500 focus:outline-none"
-        />
-        <select
-          name="status"
-          defaultValue={status}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-        >
-          <option value="all">All statuses</option>
-          {CUSTOMER_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABELS[s]}
-            </option>
-          ))}
-        </select>
-        <button
-          type="submit"
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-white"
-        >
-          Filter
-        </button>
-      </form>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTile label="Customers" value={customerList.length} />
+        <StatTile label="Open orders" value={openOrders} />
+        <StatTile label="Unpaid orders" value={unpaidOrders} accent="amber" />
+        <StatTile label="Overdue payments" value={overdue} accent="red" />
+      </div>
 
-      <div className="mt-6 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
-        {list.length === 0 && (
-          <p className="p-6 text-center text-sm text-slate-500">
-            No customers yet.
-          </p>
-        )}
-        {list.map((customer) => (
-          <Link
-            key={customer.id}
-            href={`/customers/${customer.id}`}
-            className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50"
-          >
-            <div className="min-w-0">
-              <p className="truncate font-medium text-slate-900">
-                {customer.name}
-              </p>
-              <p className="truncate text-sm text-slate-500">
-                {customer.contact_channel}
-                {customer.contact_handle ? ` · ${customer.contact_handle}` : ""}
-                {customer.tags.length > 0
-                  ? ` · ${customer.tags.join(", ")}`
-                  : ""}
-              </p>
-            </div>
-            <span
-              className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[customer.status]}`}
-            >
-              {STATUS_LABELS[customer.status]}
-            </span>
-          </Link>
-        ))}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <BreakdownCard title="Orders by status" items={orderStatusItems} />
+        <BreakdownCard title="Payment status" items={paymentStatusItems} />
+        <BreakdownCard title="Shipping status" items={shippingStatusItems} />
+        <BreakdownCard title="Customers by state" items={stateItems} />
+        <BreakdownCard title="Customers by channel" items={channelItems} />
       </div>
     </div>
   );

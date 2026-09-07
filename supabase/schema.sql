@@ -1,5 +1,6 @@
 -- Jersey Mart CRM schema
 -- Run this once in your Supabase project's SQL editor (Project > SQL Editor > New query).
+-- Structure: customer -> orders -> teams -> players / designs.
 
 create table if not exists customers (
   id uuid primary key default gen_random_uuid(),
@@ -11,10 +12,20 @@ create table if not exists customers (
   phone text,
   email text,
   address text,
+  state text,
   fabric_preference text,
   status text not null default 'lead'
     check (status in ('lead','potential','active','repeat','inactive')),
   tags text[] not null default '{}',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists orders (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  customer_id uuid not null references customers(id) on delete cascade,
+  label text,
   deadline date,
   order_status text not null default 'quote_sent'
     check (order_status in ('quote_sent','deposit_paid','mockup_sent','approved','in_production','shipped','delivered','cancelled')),
@@ -30,14 +41,22 @@ create table if not exists customers (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists teams (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  order_id uuid not null references orders(id) on delete cascade,
+  team_name text not null,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists notes (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   customer_id uuid not null references customers(id) on delete cascade,
+  order_id uuid references orders(id) on delete set null,
   body text not null,
   source text not null default 'facebook'
     check (source in ('facebook','email','call','other')),
-  is_order_relevant boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -52,10 +71,10 @@ create table if not exists pricing (
   created_at timestamptz not null default now()
 );
 
-create table if not exists orders (
+create table if not exists order_summaries (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  customer_id uuid not null references customers(id) on delete cascade,
+  order_id uuid not null references orders(id) on delete cascade,
   status text not null default 'draft'
     check (status in ('draft','sent','fulfilled')),
   summary_text text not null,
@@ -63,14 +82,10 @@ create table if not exists orders (
   sent_at timestamptz
 );
 
-create index if not exists notes_customer_id_idx on notes(customer_id);
-create index if not exists pricing_customer_id_idx on pricing(customer_id);
-create index if not exists orders_customer_id_idx on orders(customer_id);
-
 create table if not exists players (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  customer_id uuid not null references customers(id) on delete cascade,
+  team_id uuid not null references teams(id) on delete cascade,
   player_name text not null,
   name_on_back text,
   jersey_size text,
@@ -92,7 +107,7 @@ create table if not exists parcels (
 create table if not exists designs (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  customer_id uuid not null references customers(id) on delete cascade,
+  team_id uuid not null references teams(id) on delete cascade,
   stage text not null check (stage in ('ai_concept', 'machine_ready')),
   storage_path text not null,
   label text,
@@ -102,26 +117,38 @@ create table if not exists designs (
   created_at timestamptz not null default now()
 );
 
-create index if not exists players_customer_id_idx on players(customer_id);
+create index if not exists orders_customer_id_idx on orders(customer_id);
+create index if not exists teams_order_id_idx on teams(order_id);
+create index if not exists notes_customer_id_idx on notes(customer_id);
+create index if not exists notes_order_id_idx on notes(order_id);
+create index if not exists pricing_customer_id_idx on pricing(customer_id);
+create index if not exists order_summaries_order_id_idx on order_summaries(order_id);
+create index if not exists players_team_id_idx on players(team_id);
 create index if not exists parcels_customer_id_idx on parcels(customer_id);
 create index if not exists parcels_dispatched_at_idx on parcels(dispatched_at);
-create index if not exists designs_customer_id_idx on designs(customer_id);
+create index if not exists designs_team_id_idx on designs(team_id);
 
 alter table customers enable row level security;
+alter table orders enable row level security;
+alter table teams enable row level security;
 alter table notes enable row level security;
 alter table pricing enable row level security;
-alter table orders enable row level security;
+alter table order_summaries enable row level security;
 alter table players enable row level security;
 alter table parcels enable row level security;
 alter table designs enable row level security;
 
 create policy "owner_all customers" on customers
   for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+create policy "owner_all orders" on orders
+  for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+create policy "owner_all teams" on teams
+  for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 create policy "owner_all notes" on notes
   for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 create policy "owner_all pricing" on pricing
   for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
-create policy "owner_all orders" on orders
+create policy "owner_all order_summaries" on order_summaries
   for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 create policy "owner_all players" on players
   for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());

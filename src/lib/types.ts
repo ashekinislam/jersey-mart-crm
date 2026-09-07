@@ -6,7 +6,7 @@ export type CustomerStatus =
   | "repeat"
   | "inactive";
 export type NoteSource = "facebook" | "email" | "call" | "other";
-export type OrderStatus = "draft" | "sent" | "fulfilled";
+export type OrderSummaryStatus = "draft" | "sent" | "fulfilled";
 
 export type OrderTrackingStatus =
   | "quote_sent"
@@ -40,9 +40,19 @@ export interface Customer {
   phone: string | null;
   email: string | null;
   address: string | null;
+  state: string | null;
   fabric_preference: string | null;
   status: CustomerStatus;
   tags: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Order {
+  id: string;
+  owner_id: string;
+  customer_id: string;
+  label: string | null;
   deadline: string | null;
   order_status: OrderTrackingStatus;
   payment_status: PaymentStatus;
@@ -53,6 +63,14 @@ export interface Customer {
   invoice_storage_path: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Team {
+  id: string;
+  owner_id: string;
+  order_id: string;
+  team_name: string;
+  created_at: string;
 }
 
 export const ORDER_TRACKING_STATUSES: OrderTrackingStatus[] = [
@@ -136,9 +154,9 @@ export interface Note {
   id: string;
   owner_id: string;
   customer_id: string;
+  order_id: string | null;
   body: string;
   source: NoteSource;
-  is_order_relevant: boolean;
   created_at: string;
 }
 
@@ -156,7 +174,7 @@ export interface PricingEntry {
 export interface Player {
   id: string;
   owner_id: string;
-  customer_id: string;
+  team_id: string;
   player_name: string;
   name_on_back: string | null;
   jersey_size: string | null;
@@ -181,7 +199,7 @@ export type DesignStatus = "pending" | "approved" | "changes_requested";
 export interface Design {
   id: string;
   owner_id: string;
-  customer_id: string;
+  team_id: string;
   stage: DesignStage;
   storage_path: string;
   label: string | null;
@@ -202,11 +220,11 @@ export const DESIGN_STATUS_COLORS: Record<DesignStatus, string> = {
   changes_requested: "bg-amber-100 text-amber-800",
 };
 
-export interface SupplierOrder {
+export interface OrderSummary {
   id: string;
   owner_id: string;
-  customer_id: string;
-  status: OrderStatus;
+  order_id: string;
+  status: OrderSummaryStatus;
   summary_text: string;
   created_at: string;
   sent_at: string | null;

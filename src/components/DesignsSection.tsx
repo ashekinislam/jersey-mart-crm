@@ -14,18 +14,30 @@ import { FILE_INPUT_CLASS } from "@/lib/ui";
 function DesignCard({
   design,
   customerId,
+  orderId,
+  teamId,
   url,
 }: {
   design: Design;
   customerId: string;
+  orderId: string;
+  teamId: string;
   url: string | null;
 }) {
   const updateStatusWithIds = updateDesignStatus.bind(
     null,
     customerId,
+    orderId,
+    teamId,
     design.id
   );
-  const deleteDesignWithIds = deleteDesign.bind(null, customerId, design.id);
+  const deleteDesignWithIds = deleteDesign.bind(
+    null,
+    customerId,
+    orderId,
+    teamId,
+    design.id
+  );
 
   return (
     <div
@@ -100,16 +112,20 @@ function StagePanel({
   title,
   stage,
   customerId,
+  orderId,
+  teamId,
   designs,
   urls,
 }: {
   title: string;
   stage: DesignStage;
   customerId: string;
+  orderId: string;
+  teamId: string;
   designs: Design[];
   urls: Record<string, string>;
 }) {
-  const uploadWithIds = uploadDesign.bind(null, customerId);
+  const uploadWithIds = uploadDesign.bind(null, customerId, orderId, teamId);
 
   return (
     <div>
@@ -147,6 +163,8 @@ function StagePanel({
             key={d.id}
             design={d}
             customerId={customerId}
+            orderId={orderId}
+            teamId={teamId}
             url={urls[d.storage_path] ?? null}
           />
         ))}
@@ -157,10 +175,14 @@ function StagePanel({
 
 export function DesignsSection({
   customerId,
+  orderId,
+  teamId,
   designs,
   urls,
 }: {
   customerId: string;
+  orderId: string;
+  teamId: string;
   designs: Design[];
   urls: Record<string, string>;
 }) {
@@ -188,6 +210,8 @@ export function DesignsSection({
           title="AI Concepts"
           stage="ai_concept"
           customerId={customerId}
+          orderId={orderId}
+          teamId={teamId}
           designs={byStage("ai_concept")}
           urls={urls}
         />
@@ -195,6 +219,8 @@ export function DesignsSection({
           title="Machine-ready mockups"
           stage="machine_ready"
           customerId={customerId}
+          orderId={orderId}
+          teamId={teamId}
           designs={byStage("machine_ready")}
           urls={urls}
         />

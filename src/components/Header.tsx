@@ -10,6 +10,12 @@ export function Header({ email }: { email: string }) {
             Jersey Mart CRM
           </Link>
           <Link
+            href="/customers"
+            className="text-sm text-slate-600 hover:text-slate-900"
+          >
+            Customers
+          </Link>
+          <Link
             href="/dispatch"
             className="text-sm text-slate-600 hover:text-slate-900"
           >

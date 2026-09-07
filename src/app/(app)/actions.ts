@@ -4,6 +4,7 @@ import ExcelJS from "exceljs";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { parseSupplierText } from "@/lib/supplierFormat";
 import type {
   ContactChannel,
   CustomerStatus,
@@ -47,7 +48,7 @@ export async function addCustomer(formData: FormData) {
 
   if (error || !data) return;
 
-  revalidatePath("/");
+  revalidatePath("/customers");
   redirect(`/customers/${data.id}`);
 }
 
@@ -62,6 +63,7 @@ export async function updateCustomer(customerId: string, formData: FormData) {
   const phone = String(formData.get("phone") ?? "").trim() || null;
   const email = String(formData.get("email") ?? "").trim() || null;
   const address = String(formData.get("address") ?? "").trim() || null;
+  const state = String(formData.get("state") ?? "").trim() || null;
   const fabric_preference =
     String(formData.get("fabric_preference") ?? "").trim() || null;
   const tagsRaw = String(formData.get("tags") ?? "");
@@ -83,6 +85,7 @@ export async function updateCustomer(customerId: string, formData: FormData) {
       phone,
       email,
       address,
+      state,
       fabric_preference,
       tags,
       updated_at: new Date().toISOString(),
@@ -90,6 +93,7 @@ export async function updateCustomer(customerId: string, formData: FormData) {
     .eq("id", customerId);
 
   revalidatePath(`/customers/${customerId}`);
+  revalidatePath("/customers");
   revalidatePath("/");
 }
 
@@ -97,13 +101,15 @@ export async function deleteCustomer(customerId: string) {
   const supabase = await createClient();
   await supabase.from("customers").delete().eq("id", customerId);
 
-  revalidatePath("/");
-  redirect("/");
+  revalidatePath("/customers");
+  redirect("/customers");
 }
 
 export async function addNote(customerId: string, formData: FormData) {
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return;
+
+  const order_id = String(formData.get("order_id") ?? "").trim() || null;
 
   const supabase = await createClient();
   const {
@@ -114,9 +120,9 @@ export async function addNote(customerId: string, formData: FormData) {
   await supabase.from("notes").insert({
     owner_id: user.id,
     customer_id: customerId,
+    order_id,
     body,
     source: String(formData.get("source") ?? "facebook") as NoteSource,
-    is_order_relevant: formData.get("is_order_relevant") === "on",
   });
 
   revalidatePath(`/customers/${customerId}`);
@@ -152,24 +158,204 @@ export async function addPricing(customerId: string, formData: FormData) {
   revalidatePath(`/customers/${customerId}`);
 }
 
-export async function markOrderSent(customerId: string, summaryText: string) {
+// ---- Orders ----------------------------------------------------------
+
+export async function addOrder(customerId: string, formData: FormData) {
+  const label = String(formData.get("label") ?? "").trim() || null;
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  await supabase.from("orders").insert({
+  const { data, error } = await supabase
+    .from("orders")
+    .insert({ owner_id: user.id, customer_id: customerId, label })
+    .select("id")
+    .single();
+
+  if (error || !data) return;
+
+  revalidatePath(`/customers/${customerId}`);
+  redirect(`/customers/${customerId}/orders/${data.id}`);
+}
+
+export async function deleteOrder(customerId: string, orderId: string) {
+  const supabase = await createClient();
+  await supabase.from("orders").delete().eq("id", orderId);
+  revalidatePath(`/customers/${customerId}`);
+  redirect(`/customers/${customerId}`);
+}
+
+export async function updateOrderTracking(
+  customerId: string,
+  orderId: string,
+  formData: FormData
+) {
+  const label = String(formData.get("label") ?? "").trim() || null;
+  const deadline = String(formData.get("deadline") ?? "").trim() || null;
+  const order_status = String(
+    formData.get("order_status") ?? "quote_sent"
+  ) as OrderTrackingStatus;
+  const payment_status = String(
+    formData.get("payment_status") ?? "unpaid"
+  ) as PaymentStatus;
+  const payment_due_date =
+    String(formData.get("payment_due_date") ?? "").trim() || null;
+  const shipping_status = String(
+    formData.get("shipping_status") ?? "not_shipped"
+  ) as ShippingStatus;
+  const tracking_url = String(formData.get("tracking_url") ?? "").trim() || null;
+  const tracking_number =
+    String(formData.get("tracking_number") ?? "").trim() || null;
+
+  const supabase = await createClient();
+  await supabase
+    .from("orders")
+    .update({
+      label,
+      deadline,
+      order_status,
+      payment_status,
+      payment_due_date,
+      shipping_status,
+      tracking_url,
+      tracking_number,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", orderId);
+
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
+  revalidatePath(`/customers/${customerId}/orders/${orderId}/build`);
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath("/");
+}
+
+export async function uploadInvoice(
+  customerId: string,
+  orderId: string,
+  formData: FormData
+) {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: existing } = await supabase
+    .from("orders")
+    .select("invoice_storage_path")
+    .eq("id", orderId)
+    .single();
+
+  if (existing?.invoice_storage_path) {
+    await supabase.storage
+      .from("invoices")
+      .remove([existing.invoice_storage_path]);
+  }
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const storagePath = `${user.id}/${orderId}/${Date.now()}-${safeName}`;
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const { error: uploadError } = await supabase.storage
+    .from("invoices")
+    .upload(storagePath, buffer, {
+      contentType: file.type || "application/octet-stream",
+    });
+  if (uploadError) return;
+
+  await supabase
+    .from("orders")
+    .update({ invoice_storage_path: storagePath })
+    .eq("id", orderId);
+
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
+}
+
+export async function deleteInvoice(customerId: string, orderId: string) {
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("orders")
+    .select("invoice_storage_path")
+    .eq("id", orderId)
+    .single();
+
+  if (existing?.invoice_storage_path) {
+    await supabase.storage
+      .from("invoices")
+      .remove([existing.invoice_storage_path]);
+  }
+
+  await supabase
+    .from("orders")
+    .update({ invoice_storage_path: null })
+    .eq("id", orderId);
+
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
+}
+
+export async function markOrderSent(
+  customerId: string,
+  orderId: string,
+  summaryText: string
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  await supabase.from("order_summaries").insert({
     owner_id: user.id,
-    customer_id: customerId,
+    order_id: orderId,
     status: "sent",
     summary_text: summaryText,
     sent_at: new Date().toISOString(),
   });
 
-  revalidatePath(`/customers/${customerId}/order`);
-  revalidatePath(`/customers/${customerId}`);
+  revalidatePath(`/customers/${customerId}/orders/${orderId}/build`);
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
 }
+
+// ---- Teams -------------------------------------------------------------
+
+export async function addTeam(
+  customerId: string,
+  orderId: string,
+  formData: FormData
+) {
+  const team_name = String(formData.get("team_name") ?? "").trim();
+  if (!team_name) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  await supabase
+    .from("teams")
+    .insert({ owner_id: user.id, order_id: orderId, team_name });
+
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
+}
+
+export async function deleteTeam(
+  customerId: string,
+  orderId: string,
+  teamId: string
+) {
+  const supabase = await createClient();
+  await supabase.from("teams").delete().eq("id", teamId);
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
+}
+
+// ---- Players -------------------------------------------------------------
 
 const PLAYER_COLUMN_HEADERS: Record<string, string> = {
   "jersey no.": "jersey_number",
@@ -185,7 +371,22 @@ const PLAYER_COLUMN_HEADERS: Record<string, string> = {
   notes: "notes",
 };
 
-export async function importPlayers(customerId: string, formData: FormData) {
+function revalidateTeamPaths(
+  customerId: string,
+  orderId: string,
+  teamId: string
+) {
+  revalidatePath(`/customers/${customerId}/orders/${orderId}/teams/${teamId}`);
+  revalidatePath(`/customers/${customerId}/orders/${orderId}/build`);
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
+}
+
+export async function importPlayers(
+  customerId: string,
+  orderId: string,
+  teamId: string,
+  formData: FormData
+) {
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return;
 
@@ -242,7 +443,7 @@ export async function importPlayers(customerId: string, formData: FormData) {
     if (!player_name) break;
     rowsToInsert.push({
       owner_id: user.id,
-      customer_id: customerId,
+      team_id: teamId,
       player_name,
       name_on_back: cell("name_on_back"),
       jersey_size: cell("jersey_size"),
@@ -256,10 +457,45 @@ export async function importPlayers(customerId: string, formData: FormData) {
     await supabase.from("players").insert(rowsToInsert);
   }
 
-  revalidatePath(`/customers/${customerId}`);
+  revalidateTeamPaths(customerId, orderId, teamId);
 }
 
-export async function addPlayer(customerId: string, formData: FormData) {
+export async function importPlayersFromText(
+  customerId: string,
+  orderId: string,
+  teamId: string,
+  formData: FormData
+) {
+  const text = String(formData.get("text") ?? "");
+  const parsed = parseSupplierText(text);
+  if (parsed.length === 0) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const rowsToInsert = parsed.map((p) => ({
+    owner_id: user.id,
+    team_id: teamId,
+    player_name: p.player_name,
+    name_on_back: p.name_on_back,
+    jersey_size: p.jersey_size,
+    jersey_number: p.jersey_number,
+  }));
+
+  await supabase.from("players").insert(rowsToInsert);
+
+  revalidateTeamPaths(customerId, orderId, teamId);
+}
+
+export async function addPlayer(
+  customerId: string,
+  orderId: string,
+  teamId: string,
+  formData: FormData
+) {
   const player_name = String(formData.get("player_name") ?? "").trim();
   if (!player_name) return;
 
@@ -271,7 +507,7 @@ export async function addPlayer(customerId: string, formData: FormData) {
 
   await supabase.from("players").insert({
     owner_id: user.id,
-    customer_id: customerId,
+    team_id: teamId,
     player_name,
     name_on_back: String(formData.get("name_on_back") ?? "").trim() || null,
     jersey_size: String(formData.get("jersey_size") ?? "").trim() || null,
@@ -279,11 +515,13 @@ export async function addPlayer(customerId: string, formData: FormData) {
     jersey_number: String(formData.get("jersey_number") ?? "").trim() || null,
   });
 
-  revalidatePath(`/customers/${customerId}`);
+  revalidateTeamPaths(customerId, orderId, teamId);
 }
 
 export async function updatePlayer(
   customerId: string,
+  orderId: string,
+  teamId: string,
   playerId: string,
   formData: FormData
 ) {
@@ -303,15 +541,21 @@ export async function updatePlayer(
     })
     .eq("id", playerId);
 
-  revalidatePath(`/customers/${customerId}`);
-  revalidatePath(`/customers/${customerId}/order`);
+  revalidateTeamPaths(customerId, orderId, teamId);
 }
 
-export async function deletePlayer(customerId: string, playerId: string) {
+export async function deletePlayer(
+  customerId: string,
+  orderId: string,
+  teamId: string,
+  playerId: string
+) {
   const supabase = await createClient();
   await supabase.from("players").delete().eq("id", playerId);
-  revalidatePath(`/customers/${customerId}`);
+  revalidateTeamPaths(customerId, orderId, teamId);
 }
+
+// ---- Dispatch parcels ------------------------------------------------
 
 export async function addParcel(formData: FormData) {
   const customer_id = String(formData.get("customer_id") ?? "");
@@ -355,7 +599,14 @@ export async function deleteParcel(parcelId: string) {
   revalidatePath("/dispatch");
 }
 
-export async function uploadDesign(customerId: string, formData: FormData) {
+// ---- Designs -----------------------------------------------------------
+
+export async function uploadDesign(
+  customerId: string,
+  orderId: string,
+  teamId: string,
+  formData: FormData
+) {
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return;
 
@@ -371,7 +622,7 @@ export async function uploadDesign(customerId: string, formData: FormData) {
   if (!user) redirect("/login");
 
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const storagePath = `${user.id}/${customerId}/${stage}/${Date.now()}-${safeName}`;
+  const storagePath = `${user.id}/${teamId}/${stage}/${Date.now()}-${safeName}`;
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const { error: uploadError } = await supabase.storage
@@ -383,18 +634,19 @@ export async function uploadDesign(customerId: string, formData: FormData) {
 
   await supabase.from("designs").insert({
     owner_id: user.id,
-    customer_id: customerId,
+    team_id: teamId,
     stage,
     storage_path: storagePath,
     label,
   });
 
-  revalidatePath(`/customers/${customerId}`);
-  revalidatePath(`/customers/${customerId}/order`);
+  revalidateTeamPaths(customerId, orderId, teamId);
 }
 
 export async function updateDesignStatus(
   customerId: string,
+  orderId: string,
+  teamId: string,
   designId: string,
   formData: FormData
 ) {
@@ -407,11 +659,15 @@ export async function updateDesignStatus(
     .update({ status, notes })
     .eq("id", designId);
 
-  revalidatePath(`/customers/${customerId}`);
-  revalidatePath(`/customers/${customerId}/order`);
+  revalidateTeamPaths(customerId, orderId, teamId);
 }
 
-export async function deleteDesign(customerId: string, designId: string) {
+export async function deleteDesign(
+  customerId: string,
+  orderId: string,
+  teamId: string,
+  designId: string
+) {
   const supabase = await createClient();
   const { data: design } = await supabase
     .from("designs")
@@ -424,109 +680,5 @@ export async function deleteDesign(customerId: string, designId: string) {
   }
   await supabase.from("designs").delete().eq("id", designId);
 
-  revalidatePath(`/customers/${customerId}`);
-  revalidatePath(`/customers/${customerId}/order`);
-}
-
-export async function updateOrderTracking(
-  customerId: string,
-  formData: FormData
-) {
-  const deadline = String(formData.get("deadline") ?? "").trim() || null;
-  const order_status = String(
-    formData.get("order_status") ?? "quote_sent"
-  ) as OrderTrackingStatus;
-  const payment_status = String(
-    formData.get("payment_status") ?? "unpaid"
-  ) as PaymentStatus;
-  const payment_due_date =
-    String(formData.get("payment_due_date") ?? "").trim() || null;
-  const shipping_status = String(
-    formData.get("shipping_status") ?? "not_shipped"
-  ) as ShippingStatus;
-  const tracking_url = String(formData.get("tracking_url") ?? "").trim() || null;
-  const tracking_number =
-    String(formData.get("tracking_number") ?? "").trim() || null;
-
-  const supabase = await createClient();
-  await supabase
-    .from("customers")
-    .update({
-      deadline,
-      order_status,
-      payment_status,
-      payment_due_date,
-      shipping_status,
-      tracking_url,
-      tracking_number,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", customerId);
-
-  revalidatePath(`/customers/${customerId}`);
-  revalidatePath(`/customers/${customerId}/order`);
-  revalidatePath("/");
-}
-
-export async function uploadInvoice(customerId: string, formData: FormData) {
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) return;
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: existing } = await supabase
-    .from("customers")
-    .select("invoice_storage_path")
-    .eq("id", customerId)
-    .single();
-
-  if (existing?.invoice_storage_path) {
-    await supabase.storage
-      .from("invoices")
-      .remove([existing.invoice_storage_path]);
-  }
-
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const storagePath = `${user.id}/${customerId}/${Date.now()}-${safeName}`;
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const { error: uploadError } = await supabase.storage
-    .from("invoices")
-    .upload(storagePath, buffer, {
-      contentType: file.type || "application/octet-stream",
-    });
-  if (uploadError) return;
-
-  await supabase
-    .from("customers")
-    .update({ invoice_storage_path: storagePath })
-    .eq("id", customerId);
-
-  revalidatePath(`/customers/${customerId}`);
-}
-
-export async function deleteInvoice(customerId: string) {
-  const supabase = await createClient();
-  const { data: existing } = await supabase
-    .from("customers")
-    .select("invoice_storage_path")
-    .eq("id", customerId)
-    .single();
-
-  if (existing?.invoice_storage_path) {
-    await supabase.storage
-      .from("invoices")
-      .remove([existing.invoice_storage_path]);
-  }
-
-  await supabase
-    .from("customers")
-    .update({ invoice_storage_path: null })
-    .eq("id", customerId);
-
-  revalidatePath(`/customers/${customerId}`);
+  revalidateTeamPaths(customerId, orderId, teamId);
 }
