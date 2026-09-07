@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Customer,
+  Design,
+  DesignStage,
   Note,
   Player,
   PricingEntry,
@@ -11,10 +13,25 @@ import { markOrderSent } from "../../../actions";
 import { CopyButton } from "@/components/CopyButton";
 import { buildSupplierText } from "@/lib/supplierFormat";
 
+function designStatusLine(designs: Design[], stage: DesignStage, label: string) {
+  const forStage = designs.filter((d) => d.stage === stage);
+  if (forStage.length === 0) return `${label}: not started`;
+
+  const approved = forStage.find((d) => d.status === "approved");
+  if (approved) {
+    return `${label}: approved (${new Date(approved.created_at).toLocaleDateString()})`;
+  }
+  const latest = forStage[0];
+  return latest.status === "changes_requested"
+    ? `${label}: changes requested`
+    : `${label}: pending review`;
+}
+
 function buildSummary(
   customer: Customer,
   notes: Note[],
-  pricing: PricingEntry[]
+  pricing: PricingEntry[],
+  designs: Design[]
 ) {
   const lines: string[] = [];
   lines.push(`Supplier order — ${customer.name}`);
@@ -31,8 +48,10 @@ function buildSummary(
 
   if (customer.fabric_preference) {
     lines.push(`Fabric preference: ${customer.fabric_preference}`);
-    lines.push("");
   }
+  lines.push(designStatusLine(designs, "ai_concept", "AI concept"));
+  lines.push(designStatusLine(designs, "machine_ready", "Machine-ready mockup"));
+  lines.push("");
 
   lines.push("Order details:");
   if (notes.length === 0) {
@@ -76,6 +95,7 @@ export default async function BuildOrderPage({
     { data: pricing },
     { data: pastOrders },
     { data: players },
+    { data: designs },
   ] = await Promise.all([
     supabase.from("customers").select("*").eq("id", id).single(),
     supabase
@@ -99,6 +119,11 @@ export default async function BuildOrderPage({
       .select("*")
       .eq("customer_id", id)
       .order("created_at", { ascending: true }),
+    supabase
+      .from("designs")
+      .select("*")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false }),
   ]);
 
   if (!customer) notFound();
@@ -108,8 +133,9 @@ export default async function BuildOrderPage({
   const pricingList = (pricing ?? []) as PricingEntry[];
   const orderList = (pastOrders ?? []) as SupplierOrder[];
   const playerList = (players ?? []) as Player[];
+  const designList = (designs ?? []) as Design[];
 
-  const summary = buildSummary(c, noteList, pricingList);
+  const summary = buildSummary(c, noteList, pricingList, designList);
   const markSent = markOrderSent.bind(null, id, summary);
 
   const teamText = buildSupplierText(playerList);

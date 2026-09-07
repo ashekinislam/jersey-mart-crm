@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 import type {
   ContactChannel,
   CustomerStatus,
+  DesignStage,
+  DesignStatus,
   NoteSource,
 } from "@/lib/types";
 
@@ -340,4 +342,77 @@ export async function deleteParcel(parcelId: string) {
   const supabase = await createClient();
   await supabase.from("parcels").delete().eq("id", parcelId);
   revalidatePath("/dispatch");
+}
+
+export async function uploadDesign(customerId: string, formData: FormData) {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return;
+
+  const stage = String(formData.get("stage") ?? "") as DesignStage;
+  if (stage !== "ai_concept" && stage !== "machine_ready") return;
+
+  const label = String(formData.get("label") ?? "").trim() || null;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const storagePath = `${user.id}/${customerId}/${stage}/${Date.now()}-${safeName}`;
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const { error: uploadError } = await supabase.storage
+    .from("designs")
+    .upload(storagePath, buffer, {
+      contentType: file.type || "application/octet-stream",
+    });
+  if (uploadError) return;
+
+  await supabase.from("designs").insert({
+    owner_id: user.id,
+    customer_id: customerId,
+    stage,
+    storage_path: storagePath,
+    label,
+  });
+
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath(`/customers/${customerId}/order`);
+}
+
+export async function updateDesignStatus(
+  customerId: string,
+  designId: string,
+  formData: FormData
+) {
+  const status = String(formData.get("status") ?? "pending") as DesignStatus;
+  const notes = String(formData.get("notes") ?? "").trim() || null;
+
+  const supabase = await createClient();
+  await supabase
+    .from("designs")
+    .update({ status, notes })
+    .eq("id", designId);
+
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath(`/customers/${customerId}/order`);
+}
+
+export async function deleteDesign(customerId: string, designId: string) {
+  const supabase = await createClient();
+  const { data: design } = await supabase
+    .from("designs")
+    .select("storage_path")
+    .eq("id", designId)
+    .single();
+
+  if (design) {
+    await supabase.storage.from("designs").remove([design.storage_path]);
+  }
+  await supabase.from("designs").delete().eq("id", designId);
+
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath(`/customers/${customerId}/order`);
 }

@@ -67,6 +67,33 @@ export interface Parcel {
   created_at: string;
 }
 
+export type DesignStage = "ai_concept" | "machine_ready";
+export type DesignStatus = "pending" | "approved" | "changes_requested";
+
+export interface Design {
+  id: string;
+  owner_id: string;
+  customer_id: string;
+  stage: DesignStage;
+  storage_path: string;
+  label: string | null;
+  status: DesignStatus;
+  notes: string | null;
+  created_at: string;
+}
+
+export const DESIGN_STATUS_LABELS: Record<DesignStatus, string> = {
+  pending: "Pending review",
+  approved: "Approved",
+  changes_requested: "Changes requested",
+};
+
+export const DESIGN_STATUS_COLORS: Record<DesignStatus, string> = {
+  pending: "bg-slate-100 text-slate-700",
+  approved: "bg-emerald-100 text-emerald-800",
+  changes_requested: "bg-amber-100 text-amber-800",
+};
+
 export interface SupplierOrder {
   id: string;
   owner_id: string;

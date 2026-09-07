@@ -5,6 +5,7 @@ import {
   CUSTOMER_STATUSES,
   STATUS_LABELS,
   type Customer,
+  type Design,
   type Note,
   type Player,
   type PricingEntry,
@@ -21,6 +22,7 @@ import {
   updatePlayerJerseyNumber,
 } from "../../actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
+import { DesignsSection } from "@/components/DesignsSection";
 
 export default async function CustomerDetailPage({
   params,
@@ -30,25 +32,35 @@ export default async function CustomerDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: customer }, { data: notes }, { data: pricing }, { data: players }] =
-    await Promise.all([
-      supabase.from("customers").select("*").eq("id", id).single(),
-      supabase
-        .from("notes")
-        .select("*")
-        .eq("customer_id", id)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("pricing")
-        .select("*")
-        .eq("customer_id", id)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("players")
-        .select("*")
-        .eq("customer_id", id)
-        .order("created_at", { ascending: true }),
-    ]);
+  const [
+    { data: customer },
+    { data: notes },
+    { data: pricing },
+    { data: players },
+    { data: designs },
+  ] = await Promise.all([
+    supabase.from("customers").select("*").eq("id", id).single(),
+    supabase
+      .from("notes")
+      .select("*")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("pricing")
+      .select("*")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("players")
+      .select("*")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("designs")
+      .select("*")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false }),
+  ]);
 
   if (!customer) notFound();
 
@@ -56,6 +68,20 @@ export default async function CustomerDetailPage({
   const noteList = (notes ?? []) as Note[];
   const pricingList = (pricing ?? []) as PricingEntry[];
   const playerList = (players ?? []) as Player[];
+  const designList = (designs ?? []) as Design[];
+
+  const designUrls: Record<string, string> = {};
+  if (designList.length > 0) {
+    const { data: signedUrls } = await supabase.storage
+      .from("designs")
+      .createSignedUrls(
+        designList.map((d) => d.storage_path),
+        3600
+      );
+    for (const s of signedUrls ?? []) {
+      if (s.signedUrl && s.path) designUrls[s.path] = s.signedUrl;
+    }
+  }
 
   const updateCustomerWithId = updateCustomer.bind(null, id);
   const addNoteWithId = addNote.bind(null, id);
@@ -455,6 +481,8 @@ export default async function CustomerDetailPage({
           </form>
         </details>
       </section>
+
+      <DesignsSection customerId={id} designs={designList} urls={designUrls} />
 
       {/* Notes */}
       <section className="rounded-lg border border-slate-200 bg-white p-4">
