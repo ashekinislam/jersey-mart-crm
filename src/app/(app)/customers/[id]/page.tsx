@@ -1,12 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
   CUSTOMER_STATUSES,
-  ORDER_TRACKING_COLORS,
-  ORDER_TRACKING_LABELS,
-  PAYMENT_STATUS_COLORS,
-  PAYMENT_STATUS_LABELS,
   STATUS_LABELS,
   type Customer,
   type Note,
@@ -15,13 +10,13 @@ import {
 } from "@/lib/types";
 import {
   addNote,
-  addOrder,
   addPricing,
   deleteCustomer,
   deleteNote,
   updateCustomer,
 } from "../../actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
+import { CustomerOrdersSection } from "@/components/CustomerOrdersSection";
 
 export default async function CustomerDetailPage({
   params,
@@ -62,7 +57,6 @@ export default async function CustomerDetailPage({
   const addNoteWithId = addNote.bind(null, id);
   const addPricingWithId = addPricing.bind(null, id);
   const deleteCustomerWithId = deleteCustomer.bind(null, id);
-  const addOrderWithId = addOrder.bind(null, id);
 
   return (
     <div className="space-y-6">
@@ -78,69 +72,7 @@ export default async function CustomerDetailPage({
         </form>
       </div>
 
-      {/* Orders */}
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-900">Orders</h2>
-        </div>
-        <form
-          action={addOrderWithId}
-          className="mt-3 flex flex-wrap items-end gap-2"
-        >
-          <div className="min-w-[12rem] flex-1">
-            <label className="block text-xs font-medium text-slate-600">
-              New order label (optional)
-            </label>
-            <input
-              name="label"
-              placeholder="e.g. Spring 2026 kit run"
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-            />
-          </div>
-          <button
-            type="submit"
-            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
-          >
-            + New order
-          </button>
-        </form>
-
-        <div className="mt-4 divide-y divide-slate-100">
-          {orderList.length === 0 && (
-            <p className="py-3 text-sm text-slate-500">No orders yet.</p>
-          )}
-          {orderList.map((order) => (
-            <Link
-              key={order.id}
-              href={`/customers/${id}/orders/${order.id}`}
-              className="flex items-center justify-between gap-3 py-3 hover:bg-slate-50"
-            >
-              <div className="min-w-0">
-                <p className="truncate font-medium text-slate-900">
-                  {order.label || `Order — ${new Date(order.created_at).toLocaleDateString()}`}
-                </p>
-                {order.deadline && (
-                  <p className="text-xs text-red-600">
-                    Deadline: {new Date(order.deadline).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
-              <div className="flex shrink-0 gap-1.5">
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${ORDER_TRACKING_COLORS[order.order_status]}`}
-                >
-                  {ORDER_TRACKING_LABELS[order.order_status]}
-                </span>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${PAYMENT_STATUS_COLORS[order.payment_status]}`}
-                >
-                  {PAYMENT_STATUS_LABELS[order.payment_status]}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <CustomerOrdersSection customerId={id} />
 
       {/* Profile */}
       <details open className="rounded-lg border border-slate-200 bg-white p-4">
