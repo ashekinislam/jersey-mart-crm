@@ -16,8 +16,16 @@ function buildSummary(
       customer.contact_handle ? ` (${customer.contact_handle})` : ""
     }`
   );
+  if (customer.phone) lines.push(`Phone: ${customer.phone}`);
+  if (customer.email) lines.push(`Email: ${customer.email}`);
+  if (customer.address) lines.push(`Address: ${customer.address}`);
   lines.push(`Generated: ${new Date().toLocaleString()}`);
   lines.push("");
+
+  if (customer.fabric_preference) {
+    lines.push(`Fabric preference: ${customer.fabric_preference}`);
+    lines.push("");
+  }
 
   lines.push("Order details:");
   if (notes.length === 0) {

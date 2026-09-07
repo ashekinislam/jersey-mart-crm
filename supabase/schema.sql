@@ -8,6 +8,10 @@ create table if not exists customers (
   contact_channel text not null default 'facebook'
     check (contact_channel in ('facebook','email','phone','other')),
   contact_handle text,
+  phone text,
+  email text,
+  address text,
+  fabric_preference text,
   status text not null default 'lead'
     check (status in ('lead','potential','active','repeat','inactive')),
   tags text[] not null default '{}',

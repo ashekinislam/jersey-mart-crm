@@ -114,6 +114,50 @@ export default async function CustomerDetailPage({
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
             />
           </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Phone
+            </label>
+            <input
+              name="phone"
+              defaultValue={c.phone ?? ""}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Email
+            </label>
+            <input
+              name="email"
+              type="email"
+              defaultValue={c.email ?? ""}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-medium text-slate-600">
+              Address
+            </label>
+            <textarea
+              name="address"
+              defaultValue={c.address ?? ""}
+              rows={2}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-medium text-slate-600">
+              Fabric preference
+            </label>
+            <textarea
+              name="fabric_preference"
+              defaultValue={c.fabric_preference ?? ""}
+              rows={2}
+              placeholder="e.g. prefers mesh/polyester blend, sensitive to tight collars..."
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium text-slate-600">
               Tags (comma separated)
@@ -166,16 +210,6 @@ export default async function CustomerDetailPage({
               step="0.01"
               required
               className="mt-1 w-28 rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600">
-              Currency
-            </label>
-            <input
-              name="currency"
-              defaultValue="AUD"
-              className="mt-1 w-20 rounded-md border border-slate-300 px-3 py-1.5 text-sm"
             />
           </div>
           <div className="min-w-[10rem] flex-1">

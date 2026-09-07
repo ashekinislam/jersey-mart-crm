@@ -14,6 +14,10 @@ export interface Customer {
   name: string;
   contact_channel: ContactChannel;
   contact_handle: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  fabric_preference: string | null;
   status: CustomerStatus;
   tags: string[];
   created_at: string;

@@ -53,6 +53,11 @@ export async function updateCustomer(customerId: string, formData: FormData) {
   ) as ContactChannel;
   const contact_handle =
     String(formData.get("contact_handle") ?? "").trim() || null;
+  const phone = String(formData.get("phone") ?? "").trim() || null;
+  const email = String(formData.get("email") ?? "").trim() || null;
+  const address = String(formData.get("address") ?? "").trim() || null;
+  const fabric_preference =
+    String(formData.get("fabric_preference") ?? "").trim() || null;
   const tagsRaw = String(formData.get("tags") ?? "");
   const tags = tagsRaw
     .split(",")
@@ -69,6 +74,10 @@ export async function updateCustomer(customerId: string, formData: FormData) {
       status,
       contact_channel,
       contact_handle,
+      phone,
+      email,
+      address,
+      fabric_preference,
       tags,
       updated_at: new Date().toISOString(),
     })
@@ -122,7 +131,7 @@ export async function addPricing(customerId: string, formData: FormData) {
     customer_id: customerId,
     product_name,
     price,
-    currency: String(formData.get("currency") ?? "AUD").trim() || "AUD",
+    currency: "AUD",
     note: String(formData.get("note") ?? "").trim() || null,
   });
 
