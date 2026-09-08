@@ -5,6 +5,7 @@ import {
   FOLLOW_UP_STATUS_LABELS,
   ORDER_TRACKING_COLORS,
   ORDER_TRACKING_LABELS,
+  ORDER_TRACKING_STATUSES,
   STATUS_COLORS,
   STATUS_LABELS,
   type Customer,
@@ -12,8 +13,9 @@ import {
   type FollowUp,
   type Order,
 } from "@/lib/types";
-import { deleteCustomer } from "../actions";
+import { deleteCustomer, updateOrderStatusQuick } from "../actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
+import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 
 const STATUS_DOT_COLORS: Record<CustomerStatus, string> = {
   lead: "bg-emerald-500",
@@ -23,18 +25,27 @@ const STATUS_DOT_COLORS: Record<CustomerStatus, string> = {
   inactive: "bg-red-500",
 };
 
+const RECENCY_OPTIONS = [
+  { value: "all", label: "All time" },
+  { value: "7", label: "Last 7 days" },
+  { value: "30", label: "Last 30 days" },
+  { value: "90", label: "Last 3 months" },
+];
+
+const MONTH_FORMAT = new Intl.DateTimeFormat("en-AU", {
+  month: "long",
+  year: "numeric",
+});
+
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; recency?: string }>;
 }) {
-  const { q = "", status = "all" } = await searchParams;
+  const { q = "", status = "all", recency = "all" } = await searchParams;
 
   const supabase = await createClient();
-  let query = supabase
-    .from("customers")
-    .select("*")
-    .order("updated_at", { ascending: false });
+  let query = supabase.from("customers").select("*");
 
   if (q) query = query.ilike("name", `%${q}%`);
   if (status !== "all") query = query.eq("status", status);
@@ -77,7 +88,8 @@ export default async function CustomersPage({
         "customer_id",
         list.map((c) => c.id)
       )
-      .order("updated_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false });
 
     for (const o of (orders ?? []) as Order[]) {
       if (!latestOrderByCustomer.has(o.customer_id)) {
@@ -141,6 +153,42 @@ export default async function CustomersPage({
     return null;
   }
 
+  // Filter by order recency, then sort most-recently-ordered first, then
+  // group into month buckets. Customers with no order at all sit in their
+  // own trailing group and are excluded by any relative-recency filter
+  // (there's no order date for them to match against).
+  let withOrder = list.map((customer) => ({
+    customer,
+    order: latestOrderByCustomer.get(customer.id) ?? null,
+  }));
+
+  if (recency !== "all") {
+    const cutoff = new Date().getTime() - Number(recency) * 24 * 60 * 60 * 1000;
+    withOrder = withOrder.filter(
+      (r) => r.order && new Date(r.order.created_at).getTime() >= cutoff
+    );
+  }
+
+  withOrder.sort((a, b) => {
+    if (!a.order && !b.order) return 0;
+    if (!a.order) return 1;
+    if (!b.order) return -1;
+    return (
+      new Date(b.order.created_at).getTime() -
+      new Date(a.order.created_at).getTime()
+    );
+  });
+
+  const groups: { label: string; rows: typeof withOrder }[] = [];
+  for (const row of withOrder) {
+    const label = row.order
+      ? MONTH_FORMAT.format(new Date(row.order.created_at))
+      : "No orders yet";
+    const group = groups.find((g) => g.label === label);
+    if (group) group.rows.push(row);
+    else groups.push({ label, rows: [row] });
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -173,6 +221,17 @@ export default async function CustomersPage({
             </option>
           ))}
         </select>
+        <select
+          name="recency"
+          defaultValue={recency}
+          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+        >
+          {RECENCY_OPTIONS.map((r) => (
+            <option key={r.value} value={r.value}>
+              {r.label}
+            </option>
+          ))}
+        </select>
         <button
           type="submit"
           className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-white"
@@ -181,85 +240,113 @@ export default async function CustomersPage({
         </button>
       </form>
 
-      <div className="mt-6 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
-        {list.length === 0 && (
-          <p className="p-6 text-center text-sm text-slate-500">
-            No customers yet.
+      <div className="mt-6 space-y-6">
+        {groups.length === 0 && (
+          <p className="rounded-lg border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+            No customers match these filters.
           </p>
         )}
-        {list.map((customer) => {
-          const badge = followUpBadge(customer.id);
-          const dot = followUpDot(customer.id);
-          const order = latestOrderByCustomer.get(customer.id);
-          const deleteCustomerWithId = deleteCustomer.bind(null, customer.id);
-          return (
-            <div
-              key={customer.id}
-              className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50"
-            >
-              <Link href={`/customers/${customer.id}`} className="min-w-0 flex-1">
-                <p className="truncate font-medium text-slate-900">
-                  {customer.name}
-                </p>
-                <p className="truncate text-sm text-slate-500">
-                  {customer.contact_channel}
-                  {customer.contact_handle ? ` · ${customer.contact_handle}` : ""}
-                  {customer.tags.length > 0
-                    ? ` · ${customer.tags.join(", ")}`
-                    : ""}
-                  {" · Added "}
-                  {new Date(customer.created_at).toLocaleDateString()}
-                </p>
-                <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                  {order && (
-                    <span
-                      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${ORDER_TRACKING_COLORS[order.order_status]}`}
-                    >
-                      {ORDER_TRACKING_LABELS[order.order_status]}
-                    </span>
-                  )}
-                  {badge &&
-                    (badge.muted ? (
-                      <span className="text-xs text-slate-400">
-                        {badge.text}
-                      </span>
-                    ) : (
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.color}`}
-                      >
-                        {badge.text}
-                      </span>
-                    ))}
-                </div>
-              </Link>
-              <div className="flex shrink-0 items-center gap-2">
-                {dot && (
-                  <span
-                    title={dot.title}
-                    className={`h-2 w-2 rounded-full ${dot.color}`}
-                  />
-                )}
-                <span
-                  title={STATUS_LABELS[customer.status]}
-                  className={`h-2 w-2 rounded-full ${STATUS_DOT_COLORS[customer.status]}`}
-                />
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[customer.status]}`}
-                >
-                  {STATUS_LABELS[customer.status]}
-                </span>
-                <form action={deleteCustomerWithId}>
-                  <ConfirmSubmitButton
-                    confirmMessage={`Delete ${customer.name}? This removes all their orders, teams, players, designs, notes, pricing, and parcels too. This can't be undone.`}
-                    className="text-xs text-slate-400 hover:text-red-600"
+        {groups.map((group) => (
+          <div key={group.label}>
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {group.label}
+            </h2>
+            <div className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+              {group.rows.map(({ customer, order }) => {
+                const badge = followUpBadge(customer.id);
+                const dot = followUpDot(customer.id);
+                const deleteCustomerWithId = deleteCustomer.bind(
+                  null,
+                  customer.id
+                );
+                const updateOrderStatusWithIds = order
+                  ? updateOrderStatusQuick.bind(null, customer.id, order.id)
+                  : null;
+                return (
+                  <div
+                    key={customer.id}
+                    className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50"
                   >
-                    Delete
-                  </ConfirmSubmitButton>
-                </form>
-              </div>
+                    <Link
+                      href={`/customers/${customer.id}`}
+                      className="min-w-0 flex-1"
+                    >
+                      <p className="truncate font-medium text-slate-900">
+                        {customer.name}
+                      </p>
+                      <p className="truncate text-sm text-slate-500">
+                        {customer.contact_channel}
+                        {customer.contact_handle
+                          ? ` · ${customer.contact_handle}`
+                          : ""}
+                        {customer.tags.length > 0
+                          ? ` · ${customer.tags.join(", ")}`
+                          : ""}
+                        {" · Added "}
+                        {new Date(customer.created_at).toLocaleDateString()}
+                      </p>
+                      {badge && (
+                        <p className="mt-1">
+                          {badge.muted ? (
+                            <span className="text-xs text-slate-400">
+                              {badge.text}
+                            </span>
+                          ) : (
+                            <span
+                              className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.color}`}
+                            >
+                              {badge.text}
+                            </span>
+                          )}
+                        </p>
+                      )}
+                    </Link>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {dot && (
+                        <span
+                          title={dot.title}
+                          className={`h-2 w-2 rounded-full ${dot.color}`}
+                        />
+                      )}
+                      <span
+                        title={STATUS_LABELS[customer.status]}
+                        className={`h-2 w-2 rounded-full ${STATUS_DOT_COLORS[customer.status]}`}
+                      />
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[customer.status]}`}
+                      >
+                        {STATUS_LABELS[customer.status]}
+                      </span>
+                      {order && updateOrderStatusWithIds && (
+                        <form action={updateOrderStatusWithIds}>
+                          <AutoSubmitSelect
+                            name="order_status"
+                            defaultValue={order.order_status}
+                            className={`rounded-full border-0 px-2 py-0.5 text-xs font-medium ${ORDER_TRACKING_COLORS[order.order_status]}`}
+                          >
+                            {ORDER_TRACKING_STATUSES.map((s) => (
+                              <option key={s} value={s}>
+                                {ORDER_TRACKING_LABELS[s]}
+                              </option>
+                            ))}
+                          </AutoSubmitSelect>
+                        </form>
+                      )}
+                      <form action={deleteCustomerWithId}>
+                        <ConfirmSubmitButton
+                          confirmMessage={`Delete ${customer.name}? This removes all their orders, teams, players, designs, notes, pricing, and parcels too. This can't be undone.`}
+                          className="text-xs text-slate-400 hover:text-red-600"
+                        >
+                          Delete
+                        </ConfirmSubmitButton>
+                      </form>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );

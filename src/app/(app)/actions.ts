@@ -278,6 +278,27 @@ export async function updateOrderTracking(
   revalidatePath("/");
 }
 
+export async function updateOrderStatusQuick(
+  customerId: string,
+  orderId: string,
+  formData: FormData
+) {
+  const order_status = String(
+    formData.get("order_status") ?? ""
+  ) as OrderTrackingStatus;
+
+  const supabase = await createClient();
+  await supabase
+    .from("orders")
+    .update({ order_status, updated_at: new Date().toISOString() })
+    .eq("id", orderId);
+
+  revalidatePath("/customers");
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
+  revalidatePath("/");
+}
+
 export async function uploadInvoice(
   customerId: string,
   orderId: string,
