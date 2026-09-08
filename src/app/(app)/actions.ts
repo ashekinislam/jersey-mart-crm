@@ -300,6 +300,28 @@ export async function updateOrderStatusQuick(
   revalidatePath("/");
 }
 
+export async function updatePaymentStatusQuick(
+  customerId: string,
+  orderId: string,
+  formData: FormData
+) {
+  const payment_status = String(
+    formData.get("payment_status") ?? ""
+  ) as PaymentStatus;
+
+  const supabase = await createClient();
+  await supabase
+    .from("orders")
+    .update({ payment_status, updated_at: new Date().toISOString() })
+    .eq("id", orderId);
+
+  revalidatePath("/customers");
+  revalidatePath("/orders");
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
+  revalidatePath("/");
+}
+
 export async function uploadInvoice(
   customerId: string,
   orderId: string,

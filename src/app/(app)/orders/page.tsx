@@ -6,10 +6,11 @@ import {
   ORDER_TRACKING_STATUSES,
   PAYMENT_STATUS_COLORS,
   PAYMENT_STATUS_LABELS,
+  PAYMENT_STATUSES,
   type Customer,
   type Order,
 } from "@/lib/types";
-import { updateOrderStatusQuick } from "../actions";
+import { updateOrderStatusQuick, updatePaymentStatusQuick } from "../actions";
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 
 const RECENCY_OPTIONS = [
@@ -115,6 +116,12 @@ export default async function OrdersPage({
                   order.customer_id,
                   order.id
                 );
+                const updatePaymentStatusWithIds =
+                  updatePaymentStatusQuick.bind(
+                    null,
+                    order.customer_id,
+                    order.id
+                  );
                 return (
                   <div
                     key={order.id}
@@ -136,11 +143,19 @@ export default async function OrdersPage({
                       </p>
                     </Link>
                     <div className="flex shrink-0 items-center gap-2">
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${PAYMENT_STATUS_COLORS[order.payment_status]}`}
-                      >
-                        {PAYMENT_STATUS_LABELS[order.payment_status]}
-                      </span>
+                      <form action={updatePaymentStatusWithIds}>
+                        <AutoSubmitSelect
+                          name="payment_status"
+                          defaultValue={order.payment_status}
+                          className={`rounded-full border-0 px-2 py-0.5 text-xs font-medium ${PAYMENT_STATUS_COLORS[order.payment_status]}`}
+                        >
+                          {PAYMENT_STATUSES.map((s) => (
+                            <option key={s} value={s}>
+                              {PAYMENT_STATUS_LABELS[s]}
+                            </option>
+                          ))}
+                        </AutoSubmitSelect>
+                      </form>
                       <form action={updateOrderStatusWithIds}>
                         <AutoSubmitSelect
                           name="order_status"
