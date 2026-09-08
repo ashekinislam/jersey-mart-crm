@@ -81,6 +81,17 @@ export function OrderTrackingCard({
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-600">
+            Order date
+          </label>
+          <input
+            type="date"
+            name="order_date"
+            defaultValue={order.order_date}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-600">
             Order status
           </label>
           <select

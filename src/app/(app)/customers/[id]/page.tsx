@@ -443,7 +443,7 @@ export default async function CustomerDetailPage({
                 {orderList.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.label ||
-                      `Order — ${new Date(o.created_at).toLocaleDateString()}`}
+                      `Order — ${new Date(o.order_date).toLocaleDateString()}`}
                   </option>
                 ))}
               </select>

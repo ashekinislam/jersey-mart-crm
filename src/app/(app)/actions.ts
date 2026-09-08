@@ -241,6 +241,7 @@ export async function updateOrderTracking(
   formData: FormData
 ) {
   const label = String(formData.get("label") ?? "").trim() || null;
+  const order_date = String(formData.get("order_date") ?? "").trim() || null;
   const deadline = String(formData.get("deadline") ?? "").trim() || null;
   const order_status = String(
     formData.get("order_status") ?? "quote_sent"
@@ -262,6 +263,8 @@ export async function updateOrderTracking(
     .from("orders")
     .update({
       label,
+      // order_date is NOT NULL in the DB - only touch it if a real value was given.
+      ...(order_date ? { order_date } : {}),
       deadline,
       order_status,
       payment_status,
@@ -276,6 +279,8 @@ export async function updateOrderTracking(
   revalidatePath(`/customers/${customerId}/orders/${orderId}`);
   revalidatePath(`/customers/${customerId}/orders/${orderId}/build`);
   revalidatePath(`/customers/${customerId}`);
+  revalidatePath("/customers");
+  revalidatePath("/orders");
   revalidatePath("/");
 }
 
@@ -343,6 +348,58 @@ export async function updateShippingStatusQuick(
   revalidatePath(`/customers/${customerId}`);
   revalidatePath(`/customers/${customerId}/orders/${orderId}`);
   revalidatePath("/");
+}
+
+export async function updateOrderDateQuick(
+  customerId: string,
+  orderId: string,
+  formData: FormData
+) {
+  const order_date = String(formData.get("order_date") ?? "").trim();
+  if (!order_date) return;
+
+  const supabase = await createClient();
+  await supabase
+    .from("orders")
+    .update({ order_date, updated_at: new Date().toISOString() })
+    .eq("id", orderId);
+
+  revalidatePath("/customers");
+  revalidatePath("/orders");
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
+  revalidatePath("/");
+}
+
+export async function updateOrderCosts(
+  customerId: string,
+  orderId: string,
+  formData: FormData
+) {
+  const parseAmount = (key: string) => {
+    const raw = String(formData.get(key) ?? "").trim();
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const sale_amount = parseAmount("sale_amount");
+  const supplier_cost = parseAmount("supplier_cost");
+  const freight_cost = parseAmount("freight_cost");
+
+  const supabase = await createClient();
+  await supabase
+    .from("orders")
+    .update({
+      sale_amount,
+      supplier_cost,
+      freight_cost,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", orderId);
+
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
+  revalidatePath(`/customers/${customerId}`);
 }
 
 export async function uploadInvoice(

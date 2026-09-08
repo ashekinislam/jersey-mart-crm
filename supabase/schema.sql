@@ -26,6 +26,7 @@ create table if not exists orders (
   owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   customer_id uuid not null references customers(id) on delete cascade,
   label text,
+  order_date date not null default current_date,
   deadline date,
   order_status text not null default 'quote_sent'
     check (order_status in ('quote_sent','deposit_paid','mockup_sent','approved','in_production','shipped','delivered','cancelled')),
@@ -37,6 +38,9 @@ create table if not exists orders (
   tracking_url text,
   tracking_number text,
   invoice_storage_path text,
+  sale_amount numeric(10,2),
+  supplier_cost numeric(10,2),
+  freight_cost numeric(10,2),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

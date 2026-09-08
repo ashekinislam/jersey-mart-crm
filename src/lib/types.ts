@@ -63,6 +63,7 @@ export interface Order {
   owner_id: string;
   customer_id: string;
   label: string | null;
+  order_date: string;
   deadline: string | null;
   order_status: OrderTrackingStatus;
   payment_status: PaymentStatus;
@@ -71,6 +72,9 @@ export interface Order {
   tracking_url: string | null;
   tracking_number: string | null;
   invoice_storage_path: string | null;
+  sale_amount: number | null;
+  supplier_cost: number | null;
+  freight_cost: number | null;
   created_at: string;
   updated_at: string;
 }

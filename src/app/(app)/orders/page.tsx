@@ -14,11 +14,13 @@ import {
   type Order,
 } from "@/lib/types";
 import {
+  updateOrderDateQuick,
   updateOrderStatusQuick,
   updatePaymentStatusQuick,
   updateShippingStatusQuick,
 } from "../actions";
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
+import { AutoSubmitInput } from "@/components/AutoSubmitInput";
 
 const RECENCY_OPTIONS = [
   { value: "all", label: "All time" },
@@ -43,14 +45,16 @@ export default async function OrdersPage({
   let query = supabase
     .from("orders")
     .select("*")
-    .order("created_at", { ascending: false })
+    .order("order_date", { ascending: false })
     .order("id", { ascending: false });
 
   if (recency !== "all") {
     const cutoff = new Date(
       new Date().getTime() - Number(recency) * 24 * 60 * 60 * 1000
-    ).toISOString();
-    query = query.gte("created_at", cutoff);
+    )
+      .toISOString()
+      .slice(0, 10);
+    query = query.gte("order_date", cutoff);
   }
 
   const { data: orders } = await query;
@@ -69,7 +73,7 @@ export default async function OrdersPage({
 
   const groups: { label: string; rows: Order[] }[] = [];
   for (const order of orderList) {
-    const label = MONTH_FORMAT.format(new Date(order.created_at));
+    const label = MONTH_FORMAT.format(new Date(order.order_date));
     const group = groups.find((g) => g.label === label);
     if (group) group.rows.push(order);
     else groups.push({ label, rows: [order] });
@@ -135,26 +139,38 @@ export default async function OrdersPage({
                     order.customer_id,
                     order.id
                   );
+                const updateOrderDateWithIds = updateOrderDateQuick.bind(
+                  null,
+                  order.customer_id,
+                  order.id
+                );
                 return (
                   <div
                     key={order.id}
                     className="flex flex-col gap-3 px-4 py-3 hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <Link
-                      href={`/customers/${order.customer_id}/orders/${order.id}`}
-                      className="min-w-0 sm:flex-1"
-                    >
-                      <p className="truncate font-medium text-slate-900">
-                        {customer?.name ?? "Unknown customer"}
-                      </p>
-                      <p className="truncate text-sm text-slate-500">
-                        {order.label ||
-                          `Order — ${new Date(order.created_at).toLocaleDateString()}`}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        Ordered {new Date(order.created_at).toLocaleDateString()}
-                      </p>
-                    </Link>
+                    <div className="min-w-0 sm:flex-1">
+                      <Link
+                        href={`/customers/${order.customer_id}/orders/${order.id}`}
+                      >
+                        <p className="truncate font-medium text-slate-900">
+                          {customer?.name ?? "Unknown customer"}
+                        </p>
+                        <p className="truncate text-sm text-slate-500">
+                          {order.label ||
+                            `Order — ${new Date(order.order_date).toLocaleDateString()}`}
+                        </p>
+                      </Link>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span className="text-xs text-slate-400">Ordered</span>
+                        <AutoSubmitInput
+                          name="order_date"
+                          defaultValue={order.order_date}
+                          action={updateOrderDateWithIds}
+                          className="rounded-md border border-slate-300 px-1.5 py-0.5 text-xs text-slate-600"
+                        />
+                      </div>
+                    </div>
                     <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
                       <AutoSubmitSelect
                         name="payment_status"

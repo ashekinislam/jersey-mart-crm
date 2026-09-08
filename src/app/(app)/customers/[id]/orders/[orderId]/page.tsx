@@ -5,6 +5,7 @@ import type { Customer, Order } from "@/lib/types";
 import { deleteOrder } from "../../../../actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { OrderTrackingCard } from "@/components/OrderTrackingCard";
+import { OrderCostsCard } from "@/components/OrderCostsCard";
 import { OrderTeamsSection } from "@/components/OrderTeamsSection";
 
 export default async function OrderDetailPage({
@@ -46,7 +47,7 @@ export default async function OrderDetailPage({
             ← {c.name}
           </Link>
           <h1 className="text-lg font-semibold text-slate-900">
-            {o.label || `Order — ${new Date(o.created_at).toLocaleDateString()}`}
+            {o.label || `Order — ${new Date(o.order_date).toLocaleDateString()}`}
           </h1>
         </div>
         <div className="flex items-center gap-2">
@@ -73,6 +74,7 @@ export default async function OrderDetailPage({
         order={o}
         invoiceUrl={invoiceUrl}
       />
+      <OrderCostsCard customerId={id} orderId={orderId} order={o} />
       <OrderTeamsSection customerId={id} orderId={orderId} />
     </div>
   );

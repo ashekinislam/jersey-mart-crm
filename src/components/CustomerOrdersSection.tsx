@@ -10,6 +10,7 @@ import {
 import { addOrder, deleteOrder } from "@/app/(app)/actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { OrderTrackingCard } from "@/components/OrderTrackingCard";
+import { OrderCostsCard } from "@/components/OrderCostsCard";
 import { OrderTeamsSection } from "@/components/OrderTeamsSection";
 
 /**
@@ -47,7 +48,7 @@ export async function CustomerOrdersSection({
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h2 className="text-sm font-semibold text-slate-900">
-            Order: {order.label || new Date(order.created_at).toLocaleDateString()}
+            Order: {order.label || new Date(order.order_date).toLocaleDateString()}
           </h2>
           <div className="flex items-center gap-2">
             <Link
@@ -80,6 +81,7 @@ export async function CustomerOrdersSection({
           order={order}
           invoiceUrl={invoiceUrl}
         />
+        <OrderCostsCard customerId={customerId} orderId={order.id} order={order} />
         <OrderTeamsSection customerId={customerId} orderId={order.id} />
       </div>
     );
@@ -123,7 +125,7 @@ export async function CustomerOrdersSection({
             <div className="min-w-0">
               <p className="truncate font-medium text-slate-900">
                 {order.label ||
-                  `Order — ${new Date(order.created_at).toLocaleDateString()}`}
+                  `Order — ${new Date(order.order_date).toLocaleDateString()}`}
               </p>
               {order.deadline && (
                 <p className="text-xs text-red-600">
