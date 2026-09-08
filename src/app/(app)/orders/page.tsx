@@ -143,32 +143,30 @@ export default async function OrdersPage({
                       </p>
                     </Link>
                     <div className="flex shrink-0 items-center gap-2">
-                      <form action={updatePaymentStatusWithIds}>
-                        <AutoSubmitSelect
-                          name="payment_status"
-                          defaultValue={order.payment_status}
-                          className={`rounded-full border-0 px-2 py-0.5 text-xs font-medium ${PAYMENT_STATUS_COLORS[order.payment_status]}`}
-                        >
-                          {PAYMENT_STATUSES.map((s) => (
-                            <option key={s} value={s}>
-                              {PAYMENT_STATUS_LABELS[s]}
-                            </option>
-                          ))}
-                        </AutoSubmitSelect>
-                      </form>
-                      <form action={updateOrderStatusWithIds}>
-                        <AutoSubmitSelect
-                          name="order_status"
-                          defaultValue={order.order_status}
-                          className={`rounded-full border-0 px-2 py-0.5 text-xs font-medium ${ORDER_TRACKING_COLORS[order.order_status]}`}
-                        >
-                          {ORDER_TRACKING_STATUSES.map((s) => (
-                            <option key={s} value={s}>
-                              {ORDER_TRACKING_LABELS[s]}
-                            </option>
-                          ))}
-                        </AutoSubmitSelect>
-                      </form>
+                      <AutoSubmitSelect
+                        name="payment_status"
+                        defaultValue={order.payment_status}
+                        action={updatePaymentStatusWithIds}
+                        className={`rounded-full border-0 px-2 py-0.5 text-xs font-medium ${PAYMENT_STATUS_COLORS[order.payment_status]}`}
+                      >
+                        {PAYMENT_STATUSES.map((s) => (
+                          <option key={s} value={s}>
+                            {PAYMENT_STATUS_LABELS[s]}
+                          </option>
+                        ))}
+                      </AutoSubmitSelect>
+                      <AutoSubmitSelect
+                        name="order_status"
+                        defaultValue={order.order_status}
+                        action={updateOrderStatusWithIds}
+                        className={`rounded-full border-0 px-2 py-0.5 text-xs font-medium ${ORDER_TRACKING_COLORS[order.order_status]}`}
+                      >
+                        {ORDER_TRACKING_STATUSES.map((s) => (
+                          <option key={s} value={s}>
+                            {ORDER_TRACKING_LABELS[s]}
+                          </option>
+                        ))}
+                      </AutoSubmitSelect>
                     </div>
                   </div>
                 );
