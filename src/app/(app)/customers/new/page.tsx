@@ -28,6 +28,7 @@ export default function NewCustomerPage() {
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
             >
               <option value="facebook">Facebook</option>
+              <option value="instagram">Instagram</option>
               <option value="email">Email</option>
               <option value="phone">Phone</option>
               <option value="other">Other</option>

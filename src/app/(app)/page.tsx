@@ -14,6 +14,7 @@ import { BreakdownCard, StatTile } from "@/components/StatBreakdown";
 
 const CHANNEL_LABELS: Record<string, string> = {
   facebook: "Facebook",
+  instagram: "Instagram",
   email: "Email",
   phone: "Phone",
   other: "Other",
