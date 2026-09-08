@@ -158,6 +158,18 @@ export const SHIPPING_STATUS_LABELS: Record<ShippingStatus, string> = {
   picked_up: "Picked up",
 };
 
+export const SHIPPING_STATUS_COLORS: Record<ShippingStatus, string> = {
+  not_shipped: "bg-slate-100 text-slate-700",
+  at_factory: "bg-amber-100 text-amber-800",
+  with_carrier: "bg-sky-100 text-sky-800",
+  in_transit_overseas: "bg-sky-100 text-sky-800",
+  in_transit_australia: "bg-indigo-100 text-indigo-800",
+  out_for_delivery: "bg-violet-100 text-violet-800",
+  delivered: "bg-emerald-100 text-emerald-800",
+  ready_for_pickup: "bg-amber-100 text-amber-800",
+  picked_up: "bg-emerald-100 text-emerald-800",
+};
+
 export const PICKUP_ADDRESS = "49/14 Fleet Street, Browns Plains, QLD 4118";
 
 export interface Note {

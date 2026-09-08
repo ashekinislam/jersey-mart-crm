@@ -7,10 +7,17 @@ import {
   PAYMENT_STATUS_COLORS,
   PAYMENT_STATUS_LABELS,
   PAYMENT_STATUSES,
+  SHIPPING_STATUS_COLORS,
+  SHIPPING_STATUS_LABELS,
+  SHIPPING_STATUSES,
   type Customer,
   type Order,
 } from "@/lib/types";
-import { updateOrderStatusQuick, updatePaymentStatusQuick } from "../actions";
+import {
+  updateOrderStatusQuick,
+  updatePaymentStatusQuick,
+  updateShippingStatusQuick,
+} from "../actions";
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 
 const RECENCY_OPTIONS = [
@@ -122,14 +129,20 @@ export default async function OrdersPage({
                     order.customer_id,
                     order.id
                   );
+                const updateShippingStatusWithIds =
+                  updateShippingStatusQuick.bind(
+                    null,
+                    order.customer_id,
+                    order.id
+                  );
                 return (
                   <div
                     key={order.id}
-                    className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50"
+                    className="flex flex-col gap-3 px-4 py-3 hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <Link
                       href={`/customers/${order.customer_id}/orders/${order.id}`}
-                      className="min-w-0 flex-1"
+                      className="min-w-0 sm:flex-1"
                     >
                       <p className="truncate font-medium text-slate-900">
                         {customer?.name ?? "Unknown customer"}
@@ -142,7 +155,7 @@ export default async function OrdersPage({
                         Ordered {new Date(order.created_at).toLocaleDateString()}
                       </p>
                     </Link>
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
                       <AutoSubmitSelect
                         name="payment_status"
                         defaultValue={order.payment_status}
@@ -152,6 +165,18 @@ export default async function OrdersPage({
                         {PAYMENT_STATUSES.map((s) => (
                           <option key={s} value={s}>
                             {PAYMENT_STATUS_LABELS[s]}
+                          </option>
+                        ))}
+                      </AutoSubmitSelect>
+                      <AutoSubmitSelect
+                        name="shipping_status"
+                        defaultValue={order.shipping_status}
+                        action={updateShippingStatusWithIds}
+                        className={`rounded-full border-0 px-2 py-0.5 text-xs font-medium ${SHIPPING_STATUS_COLORS[order.shipping_status]}`}
+                      >
+                        {SHIPPING_STATUSES.map((s) => (
+                          <option key={s} value={s}>
+                            {SHIPPING_STATUS_LABELS[s]}
                           </option>
                         ))}
                       </AutoSubmitSelect>

@@ -17,6 +17,7 @@ import type {
   ShippingStatus,
 } from "@/lib/types";
 
+
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
@@ -313,6 +314,28 @@ export async function updatePaymentStatusQuick(
   await supabase
     .from("orders")
     .update({ payment_status, updated_at: new Date().toISOString() })
+    .eq("id", orderId);
+
+  revalidatePath("/customers");
+  revalidatePath("/orders");
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
+  revalidatePath("/");
+}
+
+export async function updateShippingStatusQuick(
+  customerId: string,
+  orderId: string,
+  formData: FormData
+) {
+  const shipping_status = String(
+    formData.get("shipping_status") ?? ""
+  ) as ShippingStatus;
+
+  const supabase = await createClient();
+  await supabase
+    .from("orders")
+    .update({ shipping_status, updated_at: new Date().toISOString() })
     .eq("id", orderId);
 
   revalidatePath("/customers");
