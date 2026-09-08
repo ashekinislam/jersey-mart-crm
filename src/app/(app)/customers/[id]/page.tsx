@@ -2,16 +2,22 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
   CUSTOMER_STATUSES,
+  FOLLOW_UP_STATUS_COLORS,
+  FOLLOW_UP_STATUS_LABELS,
+  FOLLOW_UP_STATUSES,
   STATUS_LABELS,
   type Customer,
+  type FollowUp,
   type Note,
   type Order,
   type PricingEntry,
 } from "@/lib/types";
 import {
+  addFollowUp,
   addNote,
   addPricing,
   deleteCustomer,
+  deleteFollowUp,
   deleteNote,
   updateCustomer,
 } from "../../actions";
@@ -27,25 +33,36 @@ export default async function CustomerDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: customer }, { data: notes }, { data: pricing }, { data: orders }] =
-    await Promise.all([
-      supabase.from("customers").select("*").eq("id", id).single(),
-      supabase
-        .from("notes")
-        .select("*")
-        .eq("customer_id", id)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("pricing")
-        .select("*")
-        .eq("customer_id", id)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("orders")
-        .select("*")
-        .eq("customer_id", id)
-        .order("created_at", { ascending: false }),
-    ]);
+  const [
+    { data: customer },
+    { data: notes },
+    { data: pricing },
+    { data: orders },
+    { data: followUps },
+  ] = await Promise.all([
+    supabase.from("customers").select("*").eq("id", id).single(),
+    supabase
+      .from("notes")
+      .select("*")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("pricing")
+      .select("*")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("orders")
+      .select("*")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("follow_ups")
+      .select("*")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false }),
+  ]);
 
   if (!customer) notFound();
 
@@ -53,10 +70,12 @@ export default async function CustomerDetailPage({
   const noteList = (notes ?? []) as Note[];
   const pricingList = (pricing ?? []) as PricingEntry[];
   const orderList = (orders ?? []) as Order[];
+  const followUpList = (followUps ?? []) as FollowUp[];
 
   const updateCustomerWithId = updateCustomer.bind(null, id);
   const addNoteWithId = addNote.bind(null, id);
   const addPricingWithId = addPricing.bind(null, id);
+  const addFollowUpWithId = addFollowUp.bind(null, id);
   const deleteCustomerWithId = deleteCustomer.bind(null, id);
 
   return (
@@ -72,6 +91,101 @@ export default async function CustomerDetailPage({
           </ConfirmSubmitButton>
         </form>
       </div>
+
+      {/* Follow-ups */}
+      <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-slate-900">Follow-ups</h2>
+        <form
+          action={addFollowUpWithId}
+          className="mt-3 flex flex-wrap items-end gap-2"
+        >
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Status
+            </label>
+            <select
+              name="status"
+              defaultValue="scheduled_call"
+              className="mt-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            >
+              {FOLLOW_UP_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {FOLLOW_UP_STATUS_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Due date (for scheduled)
+            </label>
+            <input
+              type="date"
+              name="due_date"
+              className="mt-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <div className="min-w-[10rem] flex-1">
+            <label className="block text-xs font-medium text-slate-600">
+              Note (optional)
+            </label>
+            <input
+              name="note"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <button
+            type="submit"
+            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            Add
+          </button>
+        </form>
+
+        <div className="mt-4 space-y-2">
+          {followUpList.length === 0 && (
+            <p className="text-sm text-slate-500">No follow-ups logged yet.</p>
+          )}
+          {followUpList.map((f) => {
+            const deleteFollowUpWithIds = deleteFollowUp.bind(null, id, f.id);
+            return (
+              <div
+                key={f.id}
+                className="flex items-start justify-between gap-3 rounded-md border border-slate-100 bg-slate-50 p-3"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${FOLLOW_UP_STATUS_COLORS[f.status]}`}
+                    >
+                      {FOLLOW_UP_STATUS_LABELS[f.status]}
+                    </span>
+                    {f.due_date && (
+                      <span className="text-xs text-slate-500">
+                        Due {new Date(f.due_date).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                  {f.note && (
+                    <p className="mt-1 text-sm text-slate-700">{f.note}</p>
+                  )}
+                  <p className="mt-1 text-xs text-slate-400">
+                    {new Date(f.created_at).toLocaleString()}
+                  </p>
+                </div>
+                <form action={deleteFollowUpWithIds}>
+                  <button
+                    type="submit"
+                    className="shrink-0 text-xs text-slate-400 hover:text-red-600"
+                  >
+                    Delete
+                  </button>
+                </form>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {/* Profile */}
       <details open className="rounded-lg border border-slate-200 bg-white p-4">

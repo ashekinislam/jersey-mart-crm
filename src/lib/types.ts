@@ -170,6 +170,51 @@ export interface Note {
   created_at: string;
 }
 
+export type FollowUpStatus =
+  | "scheduled_call"
+  | "scheduled_email"
+  | "no_answer"
+  | "spoke"
+  | "emailed"
+  | "other";
+
+export const FOLLOW_UP_STATUSES: FollowUpStatus[] = [
+  "scheduled_call",
+  "scheduled_email",
+  "no_answer",
+  "spoke",
+  "emailed",
+  "other",
+];
+
+export const FOLLOW_UP_STATUS_LABELS: Record<FollowUpStatus, string> = {
+  scheduled_call: "Call scheduled",
+  scheduled_email: "Email scheduled",
+  no_answer: "Called - no answer",
+  spoke: "Called - spoke to them",
+  emailed: "Emailed",
+  other: "Other",
+};
+
+export const FOLLOW_UP_STATUS_COLORS: Record<FollowUpStatus, string> = {
+  scheduled_call: "bg-sky-100 text-sky-800",
+  scheduled_email: "bg-sky-100 text-sky-800",
+  no_answer: "bg-amber-100 text-amber-800",
+  spoke: "bg-emerald-100 text-emerald-800",
+  emailed: "bg-emerald-100 text-emerald-800",
+  other: "bg-slate-100 text-slate-700",
+};
+
+export interface FollowUp {
+  id: string;
+  owner_id: string;
+  customer_id: string;
+  status: FollowUpStatus;
+  due_date: string | null;
+  note: string | null;
+  created_at: string;
+}
+
 export interface PricingEntry {
   id: string;
   owner_id: string;

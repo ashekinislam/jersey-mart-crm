@@ -10,6 +10,7 @@ import type {
   CustomerStatus,
   DesignStage,
   DesignStatus,
+  FollowUpStatus,
   NoteSource,
   OrderTrackingStatus,
   PaymentStatus,
@@ -132,6 +133,51 @@ export async function deleteNote(customerId: string, noteId: string) {
   const supabase = await createClient();
   await supabase.from("notes").delete().eq("id", noteId);
   revalidatePath(`/customers/${customerId}`);
+}
+
+export async function addFollowUp(customerId: string, formData: FormData) {
+  const status = String(formData.get("status") ?? "") as FollowUpStatus;
+  if (
+    ![
+      "scheduled_call",
+      "scheduled_email",
+      "no_answer",
+      "spoke",
+      "emailed",
+      "other",
+    ].includes(status)
+  )
+    return;
+
+  const due_date = String(formData.get("due_date") ?? "").trim() || null;
+  if ((status === "scheduled_call" || status === "scheduled_email") && !due_date)
+    return;
+
+  const note = String(formData.get("note") ?? "").trim() || null;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  await supabase.from("follow_ups").insert({
+    owner_id: user.id,
+    customer_id: customerId,
+    status,
+    due_date,
+    note,
+  });
+
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath("/customers");
+}
+
+export async function deleteFollowUp(customerId: string, followUpId: string) {
+  const supabase = await createClient();
+  await supabase.from("follow_ups").delete().eq("id", followUpId);
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath("/customers");
 }
 
 export async function addPricing(customerId: string, formData: FormData) {

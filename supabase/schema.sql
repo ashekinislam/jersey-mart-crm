@@ -60,6 +60,16 @@ create table if not exists notes (
   created_at timestamptz not null default now()
 );
 
+create table if not exists follow_ups (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  customer_id uuid not null references customers(id) on delete cascade,
+  status text not null check (status in ('scheduled_call','scheduled_email','no_answer','spoke','emailed','other')),
+  due_date date,
+  note text,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists pricing (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
@@ -156,6 +166,7 @@ create index if not exists designs_team_id_idx on designs(team_id);
 create index if not exists meta_conversations_customer_id_idx on meta_conversations(customer_id);
 create index if not exists meta_conversations_owner_id_idx on meta_conversations(owner_id);
 create index if not exists meta_messages_conversation_id_idx on meta_messages(conversation_id);
+create index if not exists follow_ups_customer_id_idx on follow_ups(customer_id);
 
 alter table customers enable row level security;
 alter table orders enable row level security;
@@ -168,6 +179,7 @@ alter table parcels enable row level security;
 alter table designs enable row level security;
 alter table meta_conversations enable row level security;
 alter table meta_messages enable row level security;
+alter table follow_ups enable row level security;
 
 create policy "owner_all customers" on customers
   for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
@@ -190,6 +202,8 @@ create policy "owner_all designs" on designs
 create policy "owner_all meta_conversations" on meta_conversations
   for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 create policy "owner_all meta_messages" on meta_messages
+  for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+create policy "owner_all follow_ups" on follow_ups
   for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 
 -- Storage bucket for design images (private — not publicly readable)
