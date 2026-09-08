@@ -3,11 +3,25 @@ import { createClient } from "@/lib/supabase/server";
 import {
   CUSTOMER_STATUSES,
   FOLLOW_UP_STATUS_LABELS,
+  ORDER_TRACKING_COLORS,
+  ORDER_TRACKING_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
   type Customer,
+  type CustomerStatus,
   type FollowUp,
+  type Order,
 } from "@/lib/types";
+import { deleteCustomer } from "../actions";
+import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
+
+const STATUS_DOT_COLORS: Record<CustomerStatus, string> = {
+  lead: "bg-emerald-500",
+  active: "bg-emerald-500",
+  potential: "bg-amber-500",
+  repeat: "bg-indigo-500",
+  inactive: "bg-red-500",
+};
 
 export default async function CustomersPage({
   searchParams,
@@ -54,7 +68,40 @@ export default async function CustomersPage({
     }
   }
 
+  const latestOrderByCustomer = new Map<string, Order>();
+  if (list.length > 0) {
+    const { data: orders } = await supabase
+      .from("orders")
+      .select("*")
+      .in(
+        "customer_id",
+        list.map((c) => c.id)
+      )
+      .order("updated_at", { ascending: false });
+
+    for (const o of (orders ?? []) as Order[]) {
+      if (!latestOrderByCustomer.has(o.customer_id)) {
+        latestOrderByCustomer.set(o.customer_id, o);
+      }
+    }
+  }
+
   const today = new Date().toISOString().slice(0, 10);
+
+  function followUpDot(customerId: string) {
+    const actionable = latestActionableByCustomer.get(customerId);
+    if (
+      actionable &&
+      (actionable.status === "scheduled_call" ||
+        actionable.status === "scheduled_email")
+    ) {
+      return { color: "bg-red-500", title: "Upcoming call/email" };
+    }
+    if (latestFollowUpByCustomer.has(customerId)) {
+      return { color: "bg-emerald-500", title: "Already contacted" };
+    }
+    return null;
+  }
 
   function followUpBadge(customerId: string) {
     const actionable = latestActionableByCustomer.get(customerId);
@@ -142,13 +189,15 @@ export default async function CustomersPage({
         )}
         {list.map((customer) => {
           const badge = followUpBadge(customer.id);
+          const dot = followUpDot(customer.id);
+          const order = latestOrderByCustomer.get(customer.id);
+          const deleteCustomerWithId = deleteCustomer.bind(null, customer.id);
           return (
-            <Link
+            <div
               key={customer.id}
-              href={`/customers/${customer.id}`}
               className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50"
             >
-              <div className="min-w-0">
+              <Link href={`/customers/${customer.id}`} className="min-w-0 flex-1">
                 <p className="truncate font-medium text-slate-900">
                   {customer.name}
                 </p>
@@ -158,10 +207,19 @@ export default async function CustomersPage({
                   {customer.tags.length > 0
                     ? ` · ${customer.tags.join(", ")}`
                     : ""}
+                  {" · Added "}
+                  {new Date(customer.created_at).toLocaleDateString()}
                 </p>
-                {badge && (
-                  <p className="mt-1">
-                    {badge.muted ? (
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  {order && (
+                    <span
+                      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${ORDER_TRACKING_COLORS[order.order_status]}`}
+                    >
+                      {ORDER_TRACKING_LABELS[order.order_status]}
+                    </span>
+                  )}
+                  {badge &&
+                    (badge.muted ? (
                       <span className="text-xs text-slate-400">
                         {badge.text}
                       </span>
@@ -171,16 +229,35 @@ export default async function CustomersPage({
                       >
                         {badge.text}
                       </span>
-                    )}
-                  </p>
+                    ))}
+                </div>
+              </Link>
+              <div className="flex shrink-0 items-center gap-2">
+                {dot && (
+                  <span
+                    title={dot.title}
+                    className={`h-2 w-2 rounded-full ${dot.color}`}
+                  />
                 )}
+                <span
+                  title={STATUS_LABELS[customer.status]}
+                  className={`h-2 w-2 rounded-full ${STATUS_DOT_COLORS[customer.status]}`}
+                />
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[customer.status]}`}
+                >
+                  {STATUS_LABELS[customer.status]}
+                </span>
+                <form action={deleteCustomerWithId}>
+                  <ConfirmSubmitButton
+                    confirmMessage={`Delete ${customer.name}? This removes all their orders, teams, players, designs, notes, pricing, and parcels too. This can't be undone.`}
+                    className="text-xs text-slate-400 hover:text-red-600"
+                  >
+                    Delete
+                  </ConfirmSubmitButton>
+                </form>
               </div>
-              <span
-                className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[customer.status]}`}
-              >
-                {STATUS_LABELS[customer.status]}
-              </span>
-            </Link>
+            </div>
           );
         })}
       </div>
