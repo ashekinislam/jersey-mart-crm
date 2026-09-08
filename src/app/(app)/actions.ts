@@ -294,6 +294,7 @@ export async function updateOrderStatusQuick(
     .eq("id", orderId);
 
   revalidatePath("/customers");
+  revalidatePath("/orders");
   revalidatePath(`/customers/${customerId}`);
   revalidatePath(`/customers/${customerId}/orders/${orderId}`);
   revalidatePath("/");
