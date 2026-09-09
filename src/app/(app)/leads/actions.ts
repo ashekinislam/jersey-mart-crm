@@ -55,6 +55,20 @@ export async function convertLead(conversationId: string, formData: FormData) {
   redirect(`/customers/${customer.id}`);
 }
 
+export async function deleteLead(conversationId: string) {
+  const supabase = await createClient();
+  const { data: conversation } = await supabase
+    .from("meta_conversations")
+    .select("customer_id")
+    .eq("id", conversationId)
+    .single();
+  if (conversation?.customer_id) return;
+
+  await supabase.from("meta_conversations").delete().eq("id", conversationId);
+
+  revalidatePath("/leads");
+}
+
 export async function saveMessageAsDesign(
   customerId: string,
   messageId: string,

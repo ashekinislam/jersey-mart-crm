@@ -14,6 +14,7 @@ import {
   type Order,
 } from "@/lib/types";
 import {
+  deleteOrderFromList,
   updateOrderDateQuick,
   updateOrderStatusQuick,
   updatePaymentStatusQuick,
@@ -21,6 +22,7 @@ import {
 } from "../actions";
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 import { AutoSubmitInput } from "@/components/AutoSubmitInput";
+import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 
 const RECENCY_OPTIONS = [
   { value: "all", label: "All time" },
@@ -144,6 +146,11 @@ export default async function OrdersPage({
                   order.customer_id,
                   order.id
                 );
+                const deleteOrderWithIds = deleteOrderFromList.bind(
+                  null,
+                  order.customer_id,
+                  order.id
+                );
                 return (
                   <div
                     key={order.id}
@@ -208,6 +215,14 @@ export default async function OrdersPage({
                           </option>
                         ))}
                       </AutoSubmitSelect>
+                      <form action={deleteOrderWithIds}>
+                        <ConfirmSubmitButton
+                          confirmMessage="Delete this order? This removes all its teams, players, designs, and history. This can't be undone."
+                          className="text-xs text-slate-400 hover:text-red-600"
+                        >
+                          Delete
+                        </ConfirmSubmitButton>
+                      </form>
                     </div>
                   </div>
                 );

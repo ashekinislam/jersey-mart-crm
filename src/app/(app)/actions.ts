@@ -235,6 +235,15 @@ export async function deleteOrder(customerId: string, orderId: string) {
   redirect(`/customers/${customerId}`);
 }
 
+export async function deleteOrderFromList(customerId: string, orderId: string) {
+  const supabase = await createClient();
+  await supabase.from("orders").delete().eq("id", orderId);
+  revalidatePath("/orders");
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath("/customers");
+  revalidatePath("/");
+}
+
 export async function updateOrderTracking(
   customerId: string,
   orderId: string,
