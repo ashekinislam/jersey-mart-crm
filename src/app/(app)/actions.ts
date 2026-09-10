@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { parseSupplierText } from "@/lib/supplierFormat";
+import { CUSTOMER_STATUSES } from "@/lib/types";
 import type {
   ContactChannel,
   CustomerStatus,
@@ -92,6 +93,24 @@ export async function updateCustomer(customerId: string, formData: FormData) {
       tags,
       updated_at: new Date().toISOString(),
     })
+    .eq("id", customerId);
+
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath("/customers");
+  revalidatePath("/");
+}
+
+export async function updateCustomerStatusQuick(
+  customerId: string,
+  formData: FormData
+) {
+  const status = String(formData.get("status") ?? "") as CustomerStatus;
+  if (!CUSTOMER_STATUSES.includes(status)) return;
+
+  const supabase = await createClient();
+  await supabase
+    .from("customers")
+    .update({ status, updated_at: new Date().toISOString() })
     .eq("id", customerId);
 
   revalidatePath(`/customers/${customerId}`);

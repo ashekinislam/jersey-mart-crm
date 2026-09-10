@@ -9,8 +9,9 @@ import {
   type CustomerStatus,
   type FollowUp,
 } from "@/lib/types";
-import { deleteCustomer } from "../actions";
+import { deleteCustomer, updateCustomerStatusQuick } from "../actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
+import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 
 const STATUS_DOT_COLORS: Record<CustomerStatus, string> = {
   lead: "bg-emerald-500",
@@ -170,6 +171,10 @@ export default async function CustomersPage({
           const badge = followUpBadge(customer.id);
           const dot = followUpDot(customer.id);
           const deleteCustomerWithId = deleteCustomer.bind(null, customer.id);
+          const updateStatusWithId = updateCustomerStatusQuick.bind(
+            null,
+            customer.id
+          );
           return (
             <div
               key={customer.id}
@@ -215,11 +220,18 @@ export default async function CustomersPage({
                   title={STATUS_LABELS[customer.status]}
                   className={`h-2 w-2 rounded-full ${STATUS_DOT_COLORS[customer.status]}`}
                 />
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[customer.status]}`}
+                <AutoSubmitSelect
+                  name="status"
+                  defaultValue={customer.status}
+                  action={updateStatusWithId}
+                  className={`rounded-full border-0 px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[customer.status]}`}
                 >
-                  {STATUS_LABELS[customer.status]}
-                </span>
+                  {CUSTOMER_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {STATUS_LABELS[s]}
+                    </option>
+                  ))}
+                </AutoSubmitSelect>
                 <form action={deleteCustomerWithId}>
                   <ConfirmSubmitButton
                     confirmMessage={`Delete ${customer.name}? This removes all their orders, teams, players, designs, notes, pricing, and parcels too. This can't be undone.`}
