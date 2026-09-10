@@ -14,6 +14,7 @@ import {
   type Order,
 } from "@/lib/types";
 import {
+  addOrderFromList,
   deleteOrderFromList,
   updateOrderDateQuick,
   updateOrderStatusQuick,
@@ -62,15 +63,15 @@ export default async function OrdersPage({
   const { data: orders } = await query;
   const orderList = (orders ?? []) as Order[];
 
+  const { data: allCustomers } = await supabase
+    .from("customers")
+    .select("*")
+    .order("name", { ascending: true });
+  const customerList = (allCustomers ?? []) as Customer[];
+
   const customerById = new Map<string, Customer>();
-  if (orderList.length > 0) {
-    const { data: customers } = await supabase
-      .from("customers")
-      .select("*")
-      .in("id", [...new Set(orderList.map((o) => o.customer_id))]);
-    for (const c of (customers ?? []) as Customer[]) {
-      customerById.set(c.id, c);
-    }
+  for (const c of customerList) {
+    customerById.set(c.id, c);
   }
 
   const groups: { label: string; rows: Order[] }[] = [];
@@ -89,6 +90,51 @@ export default async function OrdersPage({
       <p className="mt-1 text-sm text-slate-500">
         Every order across all customers, grouped by the month it was placed.
       </p>
+
+      <section className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-slate-900">New order</h2>
+        <form
+          action={addOrderFromList}
+          className="mt-3 flex flex-wrap items-end gap-2"
+        >
+          <div className="min-w-[10rem]">
+            <label className="block text-xs font-medium text-slate-600">
+              Customer
+            </label>
+            <select
+              name="customer_id"
+              required
+              defaultValue=""
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            >
+              <option value="" disabled>
+                Select customer...
+              </option>
+              {customerList.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="min-w-[16rem] flex-1">
+            <label className="block text-xs font-medium text-slate-600">
+              Label (optional)
+            </label>
+            <input
+              name="label"
+              placeholder="e.g. U12 boys jerseys"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <button
+            type="submit"
+            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            Add order
+          </button>
+        </form>
+      </section>
 
       <form className="mt-4 flex flex-wrap gap-2" method="get">
         <select

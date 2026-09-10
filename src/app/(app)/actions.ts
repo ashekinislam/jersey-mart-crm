@@ -247,6 +247,31 @@ export async function addOrder(customerId: string, formData: FormData) {
   redirect(`/customers/${customerId}/orders/${data.id}`);
 }
 
+export async function addOrderFromList(formData: FormData) {
+  const customer_id = String(formData.get("customer_id") ?? "").trim();
+  const label = String(formData.get("label") ?? "").trim() || null;
+  if (!customer_id) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data, error } = await supabase
+    .from("orders")
+    .insert({ owner_id: user.id, customer_id, label })
+    .select("id")
+    .single();
+
+  if (error || !data) return;
+
+  revalidatePath("/orders");
+  revalidatePath(`/customers/${customer_id}`);
+  revalidatePath("/");
+  redirect(`/customers/${customer_id}/orders/${data.id}`);
+}
+
 export async function deleteOrder(customerId: string, orderId: string) {
   const supabase = await createClient();
   await supabase.from("orders").delete().eq("id", orderId);
