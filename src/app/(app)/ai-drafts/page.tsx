@@ -1,15 +1,14 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
   CUSTOMER_STATUSES,
   STATUS_LABELS,
   type AiDraft,
-  type AiDraftPlayer,
   type Customer,
-  type Player,
 } from "@/lib/types";
 import { approveAiDraft, approveUpdateDraft, rejectAiDraft } from "./actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
-import { buildSupplierText } from "@/lib/supplierFormat";
+import { playersToText } from "./helpers";
 
 const CONTACT_CHANNEL_OPTIONS = [
   "facebook",
@@ -18,28 +17,6 @@ const CONTACT_CHANNEL_OPTIONS = [
   "phone",
   "other",
 ] as const;
-
-function playersToText(players: AiDraftPlayer[]): string {
-  const asPlayers = players.map((p) => ({
-    id: "",
-    owner_id: "",
-    team_id: "",
-    player_name: p.player_name,
-    name_on_back: p.name_on_back ?? null,
-    jersey_size: p.jersey_size ?? null,
-    shorts_size: p.shorts_size ?? null,
-    jersey_number: p.jersey_number ?? null,
-    notes: p.notes ?? null,
-    created_at: "",
-  })) as Player[];
-  return buildSupplierText(asPlayers);
-}
-
-function draftDisplayName(draft: AiDraft): string {
-  return draft.payload.kind === "update_existing"
-    ? draft.payload.customer_name_hint ?? "(unnamed)"
-    : (draft.payload.customer?.name ?? "(unnamed)");
-}
 
 interface DraftTeamOption {
   id: string;
@@ -56,15 +33,7 @@ export default async function AiDraftsPage() {
     .eq("status", "pending")
     .order("created_at", { ascending: false });
 
-  const { data: reviewed } = await supabase
-    .from("ai_drafts")
-    .select("*")
-    .in("status", ["approved", "rejected"])
-    .order("reviewed_at", { ascending: false })
-    .limit(10);
-
   const pendingList = (pending ?? []) as AiDraft[];
-  const reviewedList = (reviewed ?? []) as AiDraft[];
 
   const { data: allCustomers } = await supabase
     .from("customers")
@@ -107,13 +76,21 @@ export default async function AiDraftsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold text-slate-900">AI drafts</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          New customers/orders and updates to existing ones, submitted by
-          ChatGPT, land here first. Review and edit below, then approve —
-          nothing is saved to the CRM until you do.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-slate-900">AI drafts</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            New customers/orders and updates to existing ones, submitted by
+            ChatGPT, land here first. Review and edit below, then approve —
+            nothing is saved to the CRM until you do.
+          </p>
+        </div>
+        <Link
+          href="/ai-drafts/history"
+          className="shrink-0 whitespace-nowrap text-sm text-slate-500 hover:text-slate-900 hover:underline"
+        >
+          View history →
+        </Link>
       </div>
 
       {pendingList.length === 0 && (
@@ -164,40 +141,6 @@ export default async function AiDraftsPage() {
           </section>
         );
       })}
-
-      {reviewedList.length > 0 && (
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
-          <h2 className="text-sm font-semibold text-slate-900">
-            Recently reviewed
-          </h2>
-          <div className="mt-3 space-y-2">
-            {reviewedList.map((draft) => (
-              <div
-                key={draft.id}
-                className="flex items-center justify-between rounded-md border border-slate-100 bg-slate-50 p-3 text-sm"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-slate-700">
-                    {draftDisplayName(draft)}
-                  </p>
-                  <p className="truncate text-xs text-slate-400">
-                    &ldquo;{draft.raw_prompt}&rdquo;
-                  </p>
-                </div>
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-                    draft.status === "approved"
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "bg-red-100 text-red-700"
-                  }`}
-                >
-                  {draft.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }
