@@ -4,10 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import {
   META_PLATFORM_COLORS,
   META_PLATFORM_LABELS,
+  type Customer,
   type MetaConversation,
   type MetaMessage,
 } from "@/lib/types";
-import { convertLead } from "../actions";
+import { convertLead, linkLeadToCustomer } from "../actions";
 import { ConversationThread } from "@/components/ConversationThread";
 
 export default async function LeadDetailPage({
@@ -49,6 +50,13 @@ export default async function LeadDetailPage({
   }
 
   const convertLeadWithId = convertLead.bind(null, id);
+  const linkLeadWithId = linkLeadToCustomer.bind(null, id);
+
+  const { data: customers } = await supabase
+    .from("customers")
+    .select("id, name")
+    .order("name", { ascending: true });
+  const customerList = (customers ?? []) as Pick<Customer, "id" | "name">[];
 
   return (
     <div className="space-y-6">
@@ -74,6 +82,49 @@ export default async function LeadDetailPage({
           <ConversationThread messages={messageList} imageUrls={imageUrls} />
         </div>
       </section>
+
+      {customerList.length > 0 && (
+        <section className="rounded-lg border border-slate-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-slate-900">
+            Already a customer?
+          </h2>
+          <p className="mt-1 text-xs text-slate-500">
+            If this person is already in the CRM, link this conversation to
+            their existing record instead of creating a duplicate.
+          </p>
+          <form
+            action={linkLeadWithId}
+            className="mt-3 flex flex-wrap items-end gap-2"
+          >
+            <div className="min-w-[14rem] flex-1">
+              <label className="block text-xs font-medium text-slate-600">
+                Customer
+              </label>
+              <select
+                name="customer_id"
+                required
+                defaultValue=""
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              >
+                <option value="" disabled>
+                  Select customer...
+                </option>
+                {customerList.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="submit"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Link to customer
+            </button>
+          </form>
+        </section>
+      )}
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-slate-900">

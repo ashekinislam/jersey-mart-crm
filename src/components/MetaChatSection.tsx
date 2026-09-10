@@ -7,8 +7,9 @@ import {
   type Order,
   type Team,
 } from "@/lib/types";
-import { saveMessageAsDesign } from "@/app/(app)/leads/actions";
+import { saveMessageAsDesign, unlinkLead } from "@/app/(app)/leads/actions";
 import { ConversationThread } from "@/components/ConversationThread";
+import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 
 export async function MetaChatSection({ customerId }: { customerId: string }) {
   const supabase = await createClient();
@@ -73,14 +74,29 @@ export async function MetaChatSection({ customerId }: { customerId: string }) {
         <h2 className="text-sm font-semibold text-slate-900">
           Imported chat history
         </h2>
-        {conversationList.map((c) => (
-          <span
-            key={c.id}
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${META_PLATFORM_COLORS[c.platform]}`}
-          >
-            {META_PLATFORM_LABELS[c.platform]}
-          </span>
-        ))}
+        {conversationList.map((c) => {
+          const unlinkLeadWithIds = unlinkLead.bind(null, customerId, c.id);
+          return (
+            <span
+              key={c.id}
+              className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 py-0.5 pl-2 pr-1 text-xs"
+            >
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-medium ${META_PLATFORM_COLORS[c.platform]}`}
+              >
+                {META_PLATFORM_LABELS[c.platform]}
+              </span>
+              <form action={unlinkLeadWithIds}>
+                <ConfirmSubmitButton
+                  confirmMessage="Unlink this conversation? It goes back to the Leads inbox and the chat history will no longer show on this customer."
+                  className="text-slate-400 hover:text-red-600"
+                >
+                  Unlink
+                </ConfirmSubmitButton>
+              </form>
+            </span>
+          );
+        })}
       </div>
 
       <div className="mt-3 max-h-96 overflow-y-auto rounded-md border border-slate-100 bg-slate-50/50 p-3">

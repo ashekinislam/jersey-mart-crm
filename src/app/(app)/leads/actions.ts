@@ -55,6 +55,49 @@ export async function convertLead(conversationId: string, formData: FormData) {
   redirect(`/customers/${customer.id}`);
 }
 
+export async function linkLeadToCustomer(
+  conversationId: string,
+  formData: FormData
+) {
+  const customerId = String(formData.get("customer_id") ?? "").trim();
+  if (!customerId) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: customer } = await supabase
+    .from("customers")
+    .select("id")
+    .eq("id", customerId)
+    .single();
+  if (!customer) return;
+
+  await supabase
+    .from("meta_conversations")
+    .update({ customer_id: customerId })
+    .eq("id", conversationId);
+
+  revalidatePath("/leads");
+  revalidatePath(`/leads/${conversationId}`);
+  revalidatePath(`/customers/${customerId}`);
+  redirect(`/customers/${customerId}`);
+}
+
+export async function unlinkLead(customerId: string, conversationId: string) {
+  const supabase = await createClient();
+  await supabase
+    .from("meta_conversations")
+    .update({ customer_id: null })
+    .eq("id", conversationId)
+    .eq("customer_id", customerId);
+
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath("/leads");
+}
+
 export async function deleteLead(conversationId: string) {
   const supabase = await createClient();
   const { data: conversation } = await supabase
