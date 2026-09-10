@@ -39,6 +39,10 @@ export default async function CustomersPage({
 
   const { data: customers } = await query;
   const list = (customers ?? []) as Customer[];
+  list.sort(
+    (a, b) =>
+      (a.status === "inactive" ? 1 : 0) - (b.status === "inactive" ? 1 : 0)
+  );
 
   const latestFollowUpByCustomer = new Map<string, FollowUp>();
   const latestActionableByCustomer = new Map<string, FollowUp>();
