@@ -4,9 +4,10 @@ import {
   STATUS_LABELS,
   type AiDraft,
   type AiDraftPlayer,
+  type Customer,
   type Player,
 } from "@/lib/types";
-import { approveAiDraft, rejectAiDraft } from "./actions";
+import { approveAiDraft, approveUpdateDraft, rejectAiDraft } from "./actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { buildSupplierText } from "@/lib/supplierFormat";
 
@@ -34,6 +35,18 @@ function playersToText(players: AiDraftPlayer[]): string {
   return buildSupplierText(asPlayers);
 }
 
+function draftDisplayName(draft: AiDraft): string {
+  return draft.payload.kind === "update_existing"
+    ? draft.payload.customer_name_hint ?? "(unnamed)"
+    : (draft.payload.customer?.name ?? "(unnamed)");
+}
+
+interface DraftTeamOption {
+  id: string;
+  team_name: string;
+  order_label: string;
+}
+
 export default async function AiDraftsPage() {
   const supabase = await createClient();
 
@@ -53,14 +66,53 @@ export default async function AiDraftsPage() {
   const pendingList = (pending ?? []) as AiDraft[];
   const reviewedList = (reviewed ?? []) as AiDraft[];
 
+  const { data: allCustomers } = await supabase
+    .from("customers")
+    .select("id, name")
+    .order("name", { ascending: true });
+  const customerList = (allCustomers ?? []) as Pick<Customer, "id" | "name">[];
+
+  const teamsByCustomer: Record<string, DraftTeamOption[]> = {};
+  for (const draft of pendingList) {
+    const customerId = draft.payload.matched_customer_id;
+    if (
+      draft.payload.kind === "update_existing" &&
+      customerId &&
+      !teamsByCustomer[customerId]
+    ) {
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("id, label, created_at")
+        .eq("customer_id", customerId);
+      const orderList = orders ?? [];
+      const orderIds = orderList.map((o) => o.id);
+
+      let teams: DraftTeamOption[] = [];
+      if (orderIds.length > 0) {
+        const { data: teamRows } = await supabase
+          .from("teams")
+          .select("id, order_id, team_name")
+          .in("order_id", orderIds)
+          .order("created_at", { ascending: false });
+        teams = (teamRows ?? []).map((t) => {
+          const order = orderList.find((o) => o.id === t.order_id);
+          const orderLabel =
+            order?.label || new Date(order?.created_at ?? "").toLocaleDateString();
+          return { id: t.id, team_name: t.team_name, order_label: orderLabel };
+        });
+      }
+      teamsByCustomer[customerId] = teams;
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold text-slate-900">AI drafts</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Customers and orders submitted by ChatGPT land here first. Review
-          and edit the details below, then approve to create the real
-          records — nothing is saved to the CRM until you do.
+          New customers/orders and updates to existing ones, submitted by
+          ChatGPT, land here first. Review and edit below, then approve —
+          nothing is saved to the CRM until you do.
         </p>
       </div>
 
@@ -71,11 +123,8 @@ export default async function AiDraftsPage() {
       )}
 
       {pendingList.map((draft) => {
-        const approveWithId = approveAiDraft.bind(null, draft.id);
         const rejectWithId = rejectAiDraft.bind(null, draft.id);
-        const c = draft.payload.customer;
-        const order = draft.payload.order;
-        const team = draft.payload.team;
+        const isUpdate = draft.payload.kind === "update_existing";
 
         return (
           <section
@@ -87,194 +136,26 @@ export default async function AiDraftsPage() {
             </p>
             <p className="mt-1 text-xs text-slate-400">
               Submitted {new Date(draft.created_at).toLocaleString()}
+              {isUpdate ? " · Update to an existing customer" : ""}
             </p>
 
-            <form action={approveWithId} className="mt-4 space-y-4">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900">
-                  Customer
-                </h3>
-                <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600">
-                      Name
-                    </label>
-                    <input
-                      name="name"
-                      required
-                      defaultValue={c.name}
-                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600">
-                      Status
-                    </label>
-                    <select
-                      name="status"
-                      defaultValue={c.status ?? "lead"}
-                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-                    >
-                      {CUSTOMER_STATUSES.map((s) => (
-                        <option key={s} value={s}>
-                          {STATUS_LABELS[s]}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600">
-                      Channel
-                    </label>
-                    <select
-                      name="contact_channel"
-                      defaultValue={c.contact_channel ?? "phone"}
-                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-                    >
-                      {CONTACT_CHANNEL_OPTIONS.map((ch) => (
-                        <option key={ch} value={ch}>
-                          {ch}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600">
-                      Handle / contact
-                    </label>
-                    <input
-                      name="contact_handle"
-                      defaultValue={c.contact_handle ?? ""}
-                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600">
-                      Phone
-                    </label>
-                    <input
-                      name="phone"
-                      defaultValue={c.phone ?? ""}
-                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600">
-                      Email
-                    </label>
-                    <input
-                      name="email"
-                      type="email"
-                      defaultValue={c.email ?? ""}
-                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600">
-                      Address
-                    </label>
-                    <input
-                      name="address"
-                      defaultValue={c.address ?? ""}
-                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600">
-                      State
-                    </label>
-                    <input
-                      name="state"
-                      defaultValue={c.state ?? ""}
-                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-medium text-slate-600">
-                      Fabric preference
-                    </label>
-                    <input
-                      name="fabric_preference"
-                      defaultValue={c.fabric_preference ?? ""}
-                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {(order || team) && (
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-900">
-                    Order
-                  </h3>
-                  <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600">
-                        Label (optional)
-                      </label>
-                      <input
-                        name="order_label"
-                        defaultValue={order?.label ?? ""}
-                        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600">
-                        Deadline
-                      </label>
-                      <input
-                        name="deadline"
-                        type="date"
-                        defaultValue={order?.deadline ?? ""}
-                        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {team && (
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-900">
-                    Team & players
-                  </h3>
-                  <div className="mt-2">
-                    <label className="block text-xs font-medium text-slate-600">
-                      Team name
-                    </label>
-                    <input
-                      name="team_name"
-                      defaultValue={team.team_name}
-                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-                    />
-                  </div>
-                  <div className="mt-2">
-                    <label className="block text-xs font-medium text-slate-600">
-                      Players (one per line — edit freely before approving)
-                    </label>
-                    <textarea
-                      name="players_text"
-                      rows={Math.max(4, team.players.length + 1)}
-                      defaultValue={playersToText(team.players)}
-                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 font-mono text-xs"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
-                <button
-                  type="submit"
-                  className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
-                >
-                  Approve & create
-                </button>
-              </div>
-            </form>
+            {isUpdate ? (
+              <UpdateDraftForm
+                draft={draft}
+                customerList={customerList}
+                teamOptions={
+                  draft.payload.matched_customer_id
+                    ? (teamsByCustomer[draft.payload.matched_customer_id] ?? [])
+                    : []
+                }
+              />
+            ) : (
+              <NewCustomerDraftForm draft={draft} />
+            )}
 
             <form action={rejectWithId} className="mt-2">
               <ConfirmSubmitButton
-                confirmMessage="Reject this draft? It won't create anything in the CRM."
+                confirmMessage="Reject this draft? It won't change anything in the CRM."
                 className="text-xs text-slate-400 hover:text-red-600"
               >
                 Reject draft
@@ -297,7 +178,7 @@ export default async function AiDraftsPage() {
               >
                 <div className="min-w-0">
                   <p className="truncate text-slate-700">
-                    {draft.payload.customer.name}
+                    {draftDisplayName(draft)}
                   </p>
                   <p className="truncate text-xs text-slate-400">
                     &ldquo;{draft.raw_prompt}&rdquo;
@@ -318,5 +199,347 @@ export default async function AiDraftsPage() {
         </section>
       )}
     </div>
+  );
+}
+
+function NewCustomerDraftForm({ draft }: { draft: AiDraft }) {
+  const approveWithId = approveAiDraft.bind(null, draft.id);
+  const c = draft.payload.customer!;
+  const order = draft.payload.order;
+  const team = draft.payload.team;
+
+  return (
+    <form action={approveWithId} className="mt-4 space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900">Customer</h3>
+        <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Name
+            </label>
+            <input
+              name="name"
+              required
+              defaultValue={c.name}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Status
+            </label>
+            <select
+              name="status"
+              defaultValue={c.status ?? "lead"}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            >
+              {CUSTOMER_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {STATUS_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Channel
+            </label>
+            <select
+              name="contact_channel"
+              defaultValue={c.contact_channel ?? "phone"}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            >
+              {CONTACT_CHANNEL_OPTIONS.map((ch) => (
+                <option key={ch} value={ch}>
+                  {ch}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Handle / contact
+            </label>
+            <input
+              name="contact_handle"
+              defaultValue={c.contact_handle ?? ""}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Phone
+            </label>
+            <input
+              name="phone"
+              defaultValue={c.phone ?? ""}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Email
+            </label>
+            <input
+              name="email"
+              type="email"
+              defaultValue={c.email ?? ""}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Address
+            </label>
+            <input
+              name="address"
+              defaultValue={c.address ?? ""}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              State
+            </label>
+            <input
+              name="state"
+              defaultValue={c.state ?? ""}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-medium text-slate-600">
+              Fabric preference
+            </label>
+            <input
+              name="fabric_preference"
+              defaultValue={c.fabric_preference ?? ""}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+        </div>
+      </div>
+
+      {(order || team) && (
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">Order</h3>
+          <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="block text-xs font-medium text-slate-600">
+                Label (optional)
+              </label>
+              <input
+                name="order_label"
+                defaultValue={order?.label ?? ""}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600">
+                Deadline
+              </label>
+              <input
+                name="deadline"
+                type="date"
+                defaultValue={order?.deadline ?? ""}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {team && (
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">
+            Team & players
+          </h3>
+          <div className="mt-2">
+            <label className="block text-xs font-medium text-slate-600">
+              Team name
+            </label>
+            <input
+              name="team_name"
+              defaultValue={team.team_name}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <div className="mt-2">
+            <label className="block text-xs font-medium text-slate-600">
+              Players (one per line — edit freely before approving)
+            </label>
+            <textarea
+              name="players_text"
+              rows={Math.max(4, team.players.length + 1)}
+              defaultValue={playersToText(team.players)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 font-mono text-xs"
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
+        <button
+          type="submit"
+          className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+        >
+          Approve & create
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function UpdateDraftForm({
+  draft,
+  customerList,
+  teamOptions,
+}: {
+  draft: AiDraft;
+  customerList: Pick<Customer, "id" | "name">[];
+  teamOptions: DraftTeamOption[];
+}) {
+  const approveWithId = approveUpdateDraft.bind(null, draft.id);
+  const p = draft.payload;
+  const matched = p.matched_customer_id;
+
+  return (
+    <form action={approveWithId} className="mt-4 space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900">Customer</h3>
+        {!matched && (
+          <p className="mt-1 text-xs text-amber-700">
+            Couldn&rsquo;t confidently match &ldquo;{p.customer_name_hint}
+            &rdquo; to one customer — please pick the right one below.
+          </p>
+        )}
+        <select
+          name="customer_id"
+          required
+          defaultValue={matched ?? ""}
+          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+        >
+          <option value="" disabled>
+            Select customer...
+          </option>
+          {customerList.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {teamOptions.length > 0 && (
+        <div>
+          <label className="block text-xs font-medium text-slate-600">
+            Which order/team is this for? (needed to add players or a design)
+          </label>
+          <select
+            name="team_id"
+            defaultValue={teamOptions[0]?.id ?? ""}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+          >
+            <option value="">— none —</option>
+            {teamOptions.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.order_label} — {t.team_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div>
+        <label className="block text-xs font-medium text-slate-600">
+          Note to add (optional)
+        </label>
+        <textarea
+          name="note"
+          rows={2}
+          defaultValue={p.note ?? ""}
+          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+        />
+      </div>
+
+      {p.add_players && p.add_players.length > 0 && (
+        <div>
+          <label className="block text-xs font-medium text-slate-600">
+            Players/sizes to add (one per line — needs an order/team picked
+            above)
+          </label>
+          <textarea
+            name="players_text"
+            rows={Math.max(3, p.add_players.length + 1)}
+            defaultValue={playersToText(p.add_players)}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 font-mono text-xs"
+          />
+        </div>
+      )}
+
+      {p.design && (
+        <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+          <h4 className="text-xs font-semibold text-slate-700">
+            Design / AI concept photo
+          </h4>
+          {p.design.caption && (
+            <p className="mt-1 text-xs text-slate-500">
+              ChatGPT said: &ldquo;{p.design.caption}&rdquo;
+            </p>
+          )}
+          {p.design.image_url ? (
+            <>
+              <p className="mt-1 text-xs text-slate-500">
+                Image link provided by ChatGPT — will be fetched and attached
+                on approve, unless you upload your own file below instead.
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={p.design.image_url}
+                alt="Design preview"
+                className="mt-2 max-h-40 rounded-md border border-slate-200"
+              />
+              <input type="hidden" name="design_image_url" value={p.design.image_url} />
+            </>
+          ) : (
+            <p className="mt-1 text-xs text-slate-500">
+              ChatGPT couldn&rsquo;t pass the photo through directly — upload
+              it yourself below.
+            </p>
+          )}
+          <input type="hidden" name="design_stage" value={p.design.stage} />
+          <div className="mt-2">
+            <label className="block text-xs font-medium text-slate-600">
+              Upload file {p.design.image_url ? "(optional override)" : ""}
+            </label>
+            <input
+              type="file"
+              name="design_file"
+              accept="image/*"
+              className="mt-1 block text-xs"
+            />
+          </div>
+          <div className="mt-2">
+            <label className="block text-xs font-medium text-slate-600">
+              Caption (optional)
+            </label>
+            <input
+              name="design_caption"
+              defaultValue={p.design.caption ?? ""}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
+        <button
+          type="submit"
+          className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+        >
+          Approve & apply
+        </button>
+      </div>
+    </form>
   );
 }

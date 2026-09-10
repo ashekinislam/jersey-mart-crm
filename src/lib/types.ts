@@ -377,8 +377,18 @@ export interface AiDraftPlayer {
   notes?: string | null;
 }
 
+export interface AiDraftDesignRequest {
+  stage: DesignStage;
+  image_url?: string | null;
+  caption?: string | null;
+}
+
 export interface AiDraftPayload {
-  customer: {
+  /** Defaults to "new_customer" when absent (older drafts predate this field). */
+  kind?: "new_customer" | "update_existing";
+
+  // kind: "new_customer" (or absent)
+  customer?: {
     name: string;
     contact_channel?: ContactChannel;
     contact_handle?: string | null;
@@ -398,6 +408,14 @@ export interface AiDraftPayload {
     team_name: string;
     players: AiDraftPlayer[];
   } | null;
+
+  // kind: "update_existing"
+  customer_name_hint?: string;
+  /** Resolved server-side at intake time via a name search; null if zero or multiple matches. */
+  matched_customer_id?: string | null;
+  note?: string | null;
+  add_players?: AiDraftPlayer[];
+  design?: AiDraftDesignRequest | null;
 }
 
 export interface AiDraft {

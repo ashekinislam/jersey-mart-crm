@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
 
   const rawPrompt = String(body.raw_prompt ?? "").trim();
   const payload = body.payload;
+  const kind = payload?.kind ?? "new_customer";
 
   if (!rawPrompt) {
     return NextResponse.json(
@@ -35,17 +36,14 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  if (!payload?.customer?.name?.trim()) {
-    return NextResponse.json(
-      { error: "payload.customer.name is required" },
-      { status: 400 }
-    );
-  }
-  if (payload.team && payload.team.players.length > 0) {
-    for (const p of payload.team.players) {
+
+  const playersToCheck =
+    kind === "update_existing" ? payload?.add_players : payload?.team?.players;
+  if (playersToCheck) {
+    for (const p of playersToCheck) {
       if (!p.player_name?.trim()) {
         return NextResponse.json(
-          { error: "Every player in payload.team.players needs a player_name" },
+          { error: "Every player needs a player_name" },
           { status: 400 }
         );
       }
@@ -53,6 +51,31 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceClient();
+
+  if (kind === "update_existing") {
+    const hint = payload?.customer_name_hint?.trim();
+    if (!hint) {
+      return NextResponse.json(
+        { error: "payload.customer_name_hint is required for kind=update_existing" },
+        { status: 400 }
+      );
+    }
+
+    const { data: matches } = await supabase
+      .from("customers")
+      .select("id")
+      .eq("owner_id", OWNER_ID)
+      .ilike("name", `%${hint}%`);
+
+    payload!.matched_customer_id =
+      matches && matches.length === 1 ? matches[0].id : null;
+  } else if (!payload?.customer?.name?.trim()) {
+    return NextResponse.json(
+      { error: "payload.customer.name is required" },
+      { status: 400 }
+    );
+  }
+
   const { data, error } = await supabase
     .from("ai_drafts")
     .insert({
@@ -71,11 +94,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const matchNote =
+    kind === "update_existing" && payload!.matched_customer_id === null
+      ? " Couldn't confidently match the customer by name — the owner will need to pick the right one manually on the review screen."
+      : "";
+
   return NextResponse.json({
     draft_id: data.id,
     status: "pending_review",
     review_url: `${APP_URL}/ai-drafts`,
     message:
-      "Draft saved. Nothing has been created in the CRM yet — the owner must review and approve it at the review URL before it becomes a real customer/order.",
+      "Draft saved. Nothing has been created or changed in the CRM yet — the owner must review and approve it at the review URL first." +
+      matchNote,
   });
 }
