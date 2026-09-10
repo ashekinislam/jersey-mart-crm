@@ -363,3 +363,50 @@ export interface MetaMessage {
   sent_at: string;
   created_at: string;
 }
+
+// ---- AI intake drafts (ChatGPT Action integration) ------------------------
+
+export type AiDraftStatus = "pending" | "approved" | "rejected";
+
+export interface AiDraftPlayer {
+  player_name: string;
+  name_on_back?: string | null;
+  jersey_size?: string | null;
+  shorts_size?: string | null;
+  jersey_number?: string | null;
+  notes?: string | null;
+}
+
+export interface AiDraftPayload {
+  customer: {
+    name: string;
+    contact_channel?: ContactChannel;
+    contact_handle?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    address?: string | null;
+    state?: string | null;
+    fabric_preference?: string | null;
+    status?: CustomerStatus;
+    tags?: string[];
+  };
+  order?: {
+    label?: string | null;
+    deadline?: string | null;
+  } | null;
+  team?: {
+    team_name: string;
+    players: AiDraftPlayer[];
+  } | null;
+}
+
+export interface AiDraft {
+  id: string;
+  owner_id: string;
+  raw_prompt: string;
+  payload: AiDraftPayload;
+  status: AiDraftStatus;
+  created_customer_id: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
