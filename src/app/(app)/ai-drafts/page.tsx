@@ -430,6 +430,94 @@ function UpdateDraftForm({
         </select>
       </div>
 
+      {p.new_order && (
+        <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+          <input type="hidden" name="has_new_order" value="1" />
+          <h4 className="text-xs font-semibold text-slate-700">New order</h4>
+          <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="block text-xs font-medium text-slate-600">
+                Label (optional)
+              </label>
+              <input
+                name="new_order_label"
+                defaultValue={p.new_order.label ?? ""}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600">
+                Deadline
+              </label>
+              <input
+                name="new_order_deadline"
+                type="date"
+                defaultValue={p.new_order.deadline ?? ""}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600">
+                Sale amount
+              </label>
+              <input
+                name="new_order_sale_amount"
+                type="number"
+                step="0.01"
+                defaultValue={p.new_order.sale_amount ?? ""}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600">
+                Supplier cost
+              </label>
+              <input
+                name="new_order_supplier_cost"
+                type="number"
+                step="0.01"
+                defaultValue={p.new_order.supplier_cost ?? ""}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600">
+                Freight cost
+              </label>
+              <input
+                name="new_order_freight_cost"
+                type="number"
+                step="0.01"
+                defaultValue={p.new_order.freight_cost ?? ""}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              />
+            </div>
+          </div>
+
+          {p.new_order.team && (
+            <div className="mt-3">
+              <label className="block text-xs font-medium text-slate-600">
+                Team name
+              </label>
+              <input
+                name="new_order_team_name"
+                defaultValue={p.new_order.team.team_name}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              />
+              <label className="mt-2 block text-xs font-medium text-slate-600">
+                Players (one per line — edit freely before approving)
+              </label>
+              <textarea
+                name="new_order_players_text"
+                rows={Math.max(3, p.new_order.team.players.length + 1)}
+                defaultValue={playersToText(p.new_order.team.players)}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 font-mono text-xs"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {teamOptions.length > 0 && (
         <div>
           <label className="block text-xs font-medium text-slate-600">

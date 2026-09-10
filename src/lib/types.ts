@@ -414,6 +414,19 @@ export interface AiDraftPayload {
   /** Resolved server-side at intake time via a name search; null if zero or multiple matches. */
   matched_customer_id?: string | null;
   note?: string | null;
+  /** A brand-new order for this existing customer (not an update to one they already have). */
+  new_order?: {
+    label?: string | null;
+    deadline?: string | null;
+    sale_amount?: number | null;
+    supplier_cost?: number | null;
+    freight_cost?: number | null;
+    team?: {
+      team_name: string;
+      players: AiDraftPlayer[];
+    } | null;
+  } | null;
+  /** Players/sizes to append to one of this customer's existing orders/teams. */
   add_players?: AiDraftPlayer[];
   design?: AiDraftDesignRequest | null;
 }

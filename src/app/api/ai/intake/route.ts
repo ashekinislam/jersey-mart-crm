@@ -37,10 +37,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const playersToCheck =
-    kind === "update_existing" ? payload?.add_players : payload?.team?.players;
-  if (playersToCheck) {
-    for (const p of playersToCheck) {
+  const playerLists =
+    kind === "update_existing"
+      ? [payload?.add_players, payload?.new_order?.team?.players]
+      : [payload?.team?.players];
+  for (const players of playerLists) {
+    if (!players) continue;
+    for (const p of players) {
       if (!p.player_name?.trim()) {
         return NextResponse.json(
           { error: "Every player needs a player_name" },

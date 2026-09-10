@@ -124,6 +124,64 @@ export async function approveUpdateDraft(draftId: string, formData: FormData) {
     String(formData.get("design_image_url") ?? "").trim() || null;
   const file = formData.get("design_file");
 
+  const has_new_order = formData.get("has_new_order") === "1";
+  let new_order_id: string | null = null;
+  if (has_new_order) {
+    const parseAmount = (key: string) => {
+      const raw = String(formData.get(key) ?? "").trim();
+      if (!raw) return null;
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .insert({
+        owner_id: user.id,
+        customer_id,
+        label: String(formData.get("new_order_label") ?? "").trim() || null,
+        deadline: String(formData.get("new_order_deadline") ?? "").trim() || null,
+        sale_amount: parseAmount("new_order_sale_amount"),
+        supplier_cost: parseAmount("new_order_supplier_cost"),
+        freight_cost: parseAmount("new_order_freight_cost"),
+      })
+      .select("id")
+      .single();
+
+    if (!orderError && order) {
+      new_order_id = order.id;
+      const new_order_team_name = String(formData.get("new_order_team_name") ?? "").trim();
+      if (new_order_team_name) {
+        const { data: team, error: teamError } = await supabase
+          .from("teams")
+          .insert({ owner_id: user.id, order_id: order.id, team_name: new_order_team_name })
+          .select("id")
+          .single();
+
+        if (!teamError && team) {
+          const new_order_players_text = String(
+            formData.get("new_order_players_text") ?? ""
+          ).trim();
+          if (new_order_players_text) {
+            const parsed = parseSupplierText(new_order_players_text);
+            if (parsed.length > 0) {
+              await supabase.from("players").insert(
+                parsed.map((p) => ({
+                  owner_id: user.id,
+                  team_id: team.id,
+                  player_name: p.player_name,
+                  name_on_back: p.name_on_back,
+                  jersey_size: p.jersey_size,
+                  jersey_number: p.jersey_number,
+                }))
+              );
+            }
+          }
+        }
+      }
+    }
+  }
+
   if (note) {
     const { data: order } = team_id
       ? await supabase.from("teams").select("order_id").eq("id", team_id).single()
@@ -132,7 +190,7 @@ export async function approveUpdateDraft(draftId: string, formData: FormData) {
     await supabase.from("notes").insert({
       owner_id: user.id,
       customer_id,
-      order_id: order?.order_id ?? null,
+      order_id: order?.order_id ?? new_order_id,
       body: note,
       source: "other",
     });
