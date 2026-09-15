@@ -45,6 +45,12 @@ export function Header({
           >
             AI drafts{pendingAiDrafts > 0 ? ` (${pendingAiDrafts})` : ""}
           </Link>
+          <Link
+            href="/settings/reckon"
+            className="text-sm text-slate-600 hover:text-slate-900"
+          >
+            Reckon
+          </Link>
         </div>
         <div className="flex items-center gap-3 text-sm text-slate-500">
           <span className="hidden sm:inline">{email}</span>

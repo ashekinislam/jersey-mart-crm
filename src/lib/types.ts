@@ -448,3 +448,16 @@ export interface AiDraft {
   created_at: string;
   reviewed_at: string | null;
 }
+
+// ---- Reckon One connection -------------------------------------------------
+
+export interface ReckonConnection {
+  id: string;
+  owner_id: string;
+  access_token: string;
+  refresh_token: string;
+  expires_at: string;
+  book_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
