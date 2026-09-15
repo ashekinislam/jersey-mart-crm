@@ -28,7 +28,11 @@ export type OrderTrackingStatus =
   | "delivered"
   | "cancelled";
 
-export type PaymentStatus = "unpaid" | "invoice_sent" | "paid";
+export type PaymentStatus =
+  | "unpaid"
+  | "invoice_sent"
+  | "partially_paid"
+  | "paid";
 
 export type ShippingStatus =
   | "not_shipped"
@@ -123,18 +127,21 @@ export const ORDER_TRACKING_COLORS: Record<OrderTrackingStatus, string> = {
 export const PAYMENT_STATUSES: PaymentStatus[] = [
   "unpaid",
   "invoice_sent",
+  "partially_paid",
   "paid",
 ];
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   unpaid: "Unpaid",
   invoice_sent: "Invoice sent",
+  partially_paid: "Partially paid",
   paid: "Paid",
 };
 
 export const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
   unpaid: "bg-red-100 text-red-700",
   invoice_sent: "bg-amber-100 text-amber-800",
+  partially_paid: "bg-sky-100 text-sky-800",
   paid: "bg-emerald-100 text-emerald-800",
 };
 

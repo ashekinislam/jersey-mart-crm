@@ -31,7 +31,7 @@ create table if not exists orders (
   order_status text not null default 'quote_sent'
     check (order_status in ('quote_sent','deposit_paid','mockup_sent','approved','in_production','shipped','delivered','cancelled')),
   payment_status text not null default 'unpaid'
-    check (payment_status in ('unpaid','invoice_sent','paid')),
+    check (payment_status in ('unpaid','partially_paid','invoice_sent','paid')),
   payment_due_date date,
   shipping_status text not null default 'not_shipped'
     check (shipping_status in ('not_shipped','at_factory','with_carrier','in_transit_overseas','in_transit_australia','out_for_delivery','delivered','ready_for_pickup','picked_up')),
