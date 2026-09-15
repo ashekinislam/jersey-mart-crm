@@ -19,7 +19,7 @@ import {
   updateShippingStatusQuick,
 } from "./actions";
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
-import { StatTile } from "@/components/StatBreakdown";
+import { BreakdownCard, StatTile } from "@/components/StatBreakdown";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -62,6 +62,16 @@ export default async function DashboardPage() {
     }
   }
 
+  const ongoingOrderStatusItems = ORDER_TRACKING_STATUSES.map((s) => ({
+    label: ORDER_TRACKING_LABELS[s],
+    count: ongoingOrders.filter((o) => o.order_status === s).length,
+  }));
+
+  const ongoingShippingStatusItems = SHIPPING_STATUSES.map((s) => ({
+    label: SHIPPING_STATUS_LABELS[s],
+    count: ongoingOrders.filter((o) => o.shipping_status === s).length,
+  }));
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -79,6 +89,17 @@ export default async function DashboardPage() {
         <StatTile label="Open orders" value={ongoingOrders.length} />
         <StatTile label="Unpaid orders" value={unpaidOrders} accent="amber" />
         <StatTile label="Overdue payments" value={overdue} accent="red" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <BreakdownCard
+          title="Ongoing orders by status"
+          items={ongoingOrderStatusItems}
+        />
+        <BreakdownCard
+          title="Ongoing orders by shipping status"
+          items={ongoingShippingStatusItems}
+        />
       </div>
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
