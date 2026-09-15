@@ -19,31 +19,20 @@ import {
   updateShippingStatusQuick,
 } from "./actions";
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
-import { BreakdownCard, StatTile } from "@/components/StatBreakdown";
-
-const CHANNEL_LABELS: Record<string, string> = {
-  facebook: "Facebook",
-  instagram: "Instagram",
-  email: "Email",
-  phone: "Phone",
-  other: "Other",
-};
+import { StatTile } from "@/components/StatBreakdown";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
 
   const [{ data: customers }, { data: orders }] = await Promise.all([
-    supabase.from("customers").select("id, state, contact_channel"),
+    supabase.from("customers").select("id"),
     supabase
       .from("orders")
       .select("*")
       .order("order_date", { ascending: false }),
   ]);
 
-  const customerList = (customers ?? []) as Pick<
-    Customer,
-    "id" | "state" | "contact_channel"
-  >[];
+  const customerList = (customers ?? []) as Pick<Customer, "id">[];
   const orderList = (orders ?? []) as Order[];
 
   const ongoingOrders = orderList.filter(
@@ -72,26 +61,6 @@ export default async function DashboardPage() {
       customerById.set(c.id, c);
     }
   }
-
-  const stateMap = new Map<string, number>();
-  for (const c of customerList) {
-    const key = c.state?.trim() || "Not set";
-    stateMap.set(key, (stateMap.get(key) ?? 0) + 1);
-  }
-  const stateItems = [...stateMap.entries()].map(([label, count]) => ({
-    label,
-    count,
-  }));
-
-  const channelMap = new Map<string, number>();
-  for (const c of customerList) {
-    const key = c.contact_channel;
-    channelMap.set(key, (channelMap.get(key) ?? 0) + 1);
-  }
-  const channelItems = [...channelMap.entries()].map(([channel, count]) => ({
-    label: CHANNEL_LABELS[channel] ?? channel,
-    count,
-  }));
 
   return (
     <div className="space-y-6">
@@ -211,11 +180,6 @@ export default async function DashboardPage() {
           </div>
         )}
       </section>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <BreakdownCard title="Customers by state" items={stateItems} />
-        <BreakdownCard title="Customers by channel" items={channelItems} />
-      </div>
     </div>
   );
 }
