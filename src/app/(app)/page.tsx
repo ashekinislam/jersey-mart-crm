@@ -19,37 +19,21 @@ import {
   updateShippingStatusQuick,
 } from "./actions";
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
-import { BreakdownCard, StatTile } from "@/components/StatBreakdown";
+import { BreakdownCard } from "@/components/StatBreakdown";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  const [{ data: customers }, { data: orders }] = await Promise.all([
-    supabase.from("customers").select("id"),
-    supabase
-      .from("orders")
-      .select("*")
-      .order("order_date", { ascending: false }),
-  ]);
+  const { data: orders } = await supabase
+    .from("orders")
+    .select("*")
+    .order("order_date", { ascending: false });
 
-  const customerList = (customers ?? []) as Pick<Customer, "id">[];
   const orderList = (orders ?? []) as Order[];
 
   const ongoingOrders = orderList.filter(
     (o) => o.order_status !== "delivered" && o.order_status !== "cancelled"
   );
-
-  const unpaidOrders = orderList.filter(
-    (o) => o.payment_status !== "paid"
-  ).length;
-
-  const today = new Date().toISOString().slice(0, 10);
-  const overdue = orderList.filter(
-    (o) =>
-      o.payment_status !== "paid" &&
-      o.payment_due_date !== null &&
-      o.payment_due_date < today
-  ).length;
 
   const customerById = new Map<string, Customer>();
   if (ongoingOrders.length > 0) {
@@ -84,13 +68,6 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile label="Customers" value={customerList.length} />
-        <StatTile label="Open orders" value={ongoingOrders.length} />
-        <StatTile label="Unpaid orders" value={unpaidOrders} accent="amber" />
-        <StatTile label="Overdue payments" value={overdue} accent="red" />
-      </div>
-
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <BreakdownCard
           title="Ongoing orders by status"
@@ -105,7 +82,7 @@ export default async function DashboardPage() {
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-900">
-            Ongoing orders
+            Ongoing orders ({ongoingOrders.length})
           </h2>
           <Link
             href="/orders"
