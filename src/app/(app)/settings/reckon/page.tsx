@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ReckonConnection } from "@/lib/types";
-import { disconnectReckon } from "./actions";
+import { disconnectReckon, updateReckonBookId } from "./actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -52,22 +52,51 @@ export default async function ReckonSettingsPage({
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         {connection ? (
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-slate-900">
-                Reckon is connected
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Connected {new Date(connection.created_at).toLocaleString()}
-              </p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-slate-900">
+                  Reckon is connected
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Connected {new Date(connection.created_at).toLocaleString()}
+                </p>
+              </div>
+              <form action={disconnectReckon}>
+                <ConfirmSubmitButton
+                  confirmMessage="Disconnect Reckon? You'll need to reconnect to resume syncing."
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-500 hover:border-red-300 hover:text-red-600"
+                >
+                  Disconnect
+                </ConfirmSubmitButton>
+              </form>
             </div>
-            <form action={disconnectReckon}>
-              <ConfirmSubmitButton
-                confirmMessage="Disconnect Reckon? You'll need to reconnect to resume syncing."
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-500 hover:border-red-300 hover:text-red-600"
+
+            <form
+              action={updateReckonBookId}
+              className="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-4"
+            >
+              <div className="min-w-[16rem] flex-1">
+                <label className="block text-xs font-medium text-slate-600">
+                  Book ID
+                </label>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  From your Reckon One book&rsquo;s URL — app.reckonone.com/
+                  <span className="italic">BookId</span>/Core
+                </p>
+                <input
+                  name="book_id"
+                  defaultValue={connection.book_id ?? ""}
+                  placeholder="e.g. a9eeb038-cd9c-42e4-abe6-fa5b28a397c0"
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+                />
+              </div>
+              <button
+                type="submit"
+                className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
               >
-                Disconnect
-              </ConfirmSubmitButton>
+                Save
+              </button>
             </form>
           </div>
         ) : (
