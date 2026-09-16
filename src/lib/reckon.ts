@@ -138,6 +138,7 @@ export async function reckonApiGet(
 export interface ReckonSyncSummary {
   ok: boolean;
   error?: string;
+  detail?: unknown;
   updated: number;
   linked: number;
   drafted: number;
@@ -162,7 +163,14 @@ export async function runReckonSync(
 
   const result = await reckonApiGet(accessToken, connection.book_id, "/invoices");
   if (!result.ok) {
-    return { ok: false, error: "fetch_failed", updated: 0, linked: 0, drafted: 0 };
+    return {
+      ok: false,
+      error: "fetch_failed",
+      detail: { status: result.status, body: result.body },
+      updated: 0,
+      linked: 0,
+      drafted: 0,
+    };
   }
 
   const invoices = ((result.body as { list?: ReckonInvoice[] })?.list ??
