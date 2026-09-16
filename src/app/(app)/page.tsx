@@ -133,6 +133,11 @@ export default async function DashboardPage() {
                       {order.label ||
                         `Order — ${new Date(order.order_date).toLocaleDateString()}`}
                     </p>
+                    {order.special_instructions && (
+                      <p className="truncate text-xs text-amber-700">
+                        ⚠ {order.special_instructions}
+                      </p>
+                    )}
                   </Link>
                   <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
                     <AutoSubmitSelect
