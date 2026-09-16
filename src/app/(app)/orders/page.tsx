@@ -213,6 +213,11 @@ export default async function OrdersPage({
                           {order.label ||
                             `Order — ${new Date(order.order_date).toLocaleDateString()}`}
                         </p>
+                        {order.special_instructions && (
+                          <p className="truncate text-xs text-amber-700">
+                            ⚠ {order.special_instructions}
+                          </p>
+                        )}
                       </Link>
                       <div className="mt-1 flex items-center gap-1.5">
                         <span className="text-xs text-slate-400">Ordered</span>

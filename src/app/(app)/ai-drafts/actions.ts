@@ -144,6 +144,8 @@ export async function approveUpdateDraft(draftId: string, formData: FormData) {
     ).trim() as PaymentStatus | "";
     const reckon_invoice_id =
       String(formData.get("new_order_reckon_invoice_id") ?? "").trim() || null;
+    const new_order_special_instructions =
+      String(formData.get("new_order_special_instructions") ?? "").trim() || null;
 
     const { data: order, error: orderError } = await supabase
       .from("orders")
@@ -157,6 +159,7 @@ export async function approveUpdateDraft(draftId: string, formData: FormData) {
         freight_cost: parseAmount("new_order_freight_cost"),
         ...(payment_status ? { payment_status } : {}),
         reckon_invoice_id,
+        special_instructions: new_order_special_instructions,
       })
       .select("id")
       .single();
@@ -195,18 +198,37 @@ export async function approveUpdateDraft(draftId: string, formData: FormData) {
     }
   }
 
-  if (note) {
-    const { data: order } = team_id
-      ? await supabase.from("teams").select("order_id").eq("id", team_id).single()
-      : { data: null };
+  let existing_order_id: string | null = null;
+  if (team_id) {
+    const { data: team } = await supabase
+      .from("teams")
+      .select("order_id")
+      .eq("id", team_id)
+      .single();
+    existing_order_id = team?.order_id ?? null;
+  }
 
+  if (note) {
     await supabase.from("notes").insert({
       owner_id: user.id,
       customer_id,
-      order_id: order?.order_id ?? new_order_id,
+      order_id: existing_order_id ?? new_order_id,
       body: note,
       source: "other",
     });
+  }
+
+  const special_instructions = String(
+    formData.get("special_instructions") ?? ""
+  ).trim();
+  if (special_instructions && existing_order_id) {
+    await supabase
+      .from("orders")
+      .update({
+        special_instructions,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existing_order_id);
   }
 
   if (team_id && players_text) {

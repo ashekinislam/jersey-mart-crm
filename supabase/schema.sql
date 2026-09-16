@@ -42,6 +42,7 @@ create table if not exists orders (
   supplier_cost numeric(10,2),
   freight_cost numeric(10,2),
   reckon_invoice_id text,
+  special_instructions text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

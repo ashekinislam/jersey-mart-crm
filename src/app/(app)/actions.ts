@@ -455,6 +455,25 @@ export async function updateOrderCosts(
   revalidatePath(`/customers/${customerId}`);
 }
 
+export async function updateOrderInstructions(
+  customerId: string,
+  orderId: string,
+  formData: FormData
+) {
+  const special_instructions =
+    String(formData.get("special_instructions") ?? "").trim() || null;
+
+  const supabase = await createClient();
+  await supabase
+    .from("orders")
+    .update({ special_instructions, updated_at: new Date().toISOString() })
+    .eq("id", orderId);
+
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath("/orders");
+}
+
 export async function uploadInvoice(
   customerId: string,
   orderId: string,

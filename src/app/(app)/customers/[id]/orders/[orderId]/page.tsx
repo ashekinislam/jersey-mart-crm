@@ -6,6 +6,7 @@ import { deleteOrder } from "../../../../actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { OrderTrackingCard } from "@/components/OrderTrackingCard";
 import { OrderCostsCard } from "@/components/OrderCostsCard";
+import { OrderInstructionsCard } from "@/components/OrderInstructionsCard";
 import { OrderTeamsSection } from "@/components/OrderTeamsSection";
 
 export default async function OrderDetailPage({
@@ -68,6 +69,7 @@ export default async function OrderDetailPage({
         </div>
       </div>
 
+      <OrderInstructionsCard customerId={id} orderId={orderId} order={o} />
       <OrderTrackingCard
         customerId={id}
         orderId={orderId}

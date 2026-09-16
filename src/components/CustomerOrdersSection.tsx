@@ -11,6 +11,7 @@ import { addOrder, deleteOrder } from "@/app/(app)/actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { OrderTrackingCard } from "@/components/OrderTrackingCard";
 import { OrderCostsCard } from "@/components/OrderCostsCard";
+import { OrderInstructionsCard } from "@/components/OrderInstructionsCard";
 import { OrderTeamsSection } from "@/components/OrderTeamsSection";
 
 /**
@@ -75,6 +76,11 @@ export async function CustomerOrdersSection({
             </form>
           </div>
         </div>
+        <OrderInstructionsCard
+          customerId={customerId}
+          orderId={order.id}
+          order={order}
+        />
         <OrderTrackingCard
           customerId={customerId}
           orderId={order.id}
@@ -130,6 +136,11 @@ export async function CustomerOrdersSection({
               {order.deadline && (
                 <p className="text-xs text-red-600">
                   Deadline: {new Date(order.deadline).toLocaleDateString()}
+                </p>
+              )}
+              {order.special_instructions && (
+                <p className="truncate text-xs text-amber-700">
+                  ⚠ {order.special_instructions}
                 </p>
               )}
             </div>

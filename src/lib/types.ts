@@ -80,6 +80,7 @@ export interface Order {
   supplier_cost: number | null;
   freight_cost: number | null;
   reckon_invoice_id: string | null;
+  special_instructions: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -422,6 +423,9 @@ export interface AiDraftPayload {
   /** Resolved server-side at intake time via a name search; null if zero or multiple matches. */
   matched_customer_id?: string | null;
   note?: string | null;
+  /** Production constraints (e.g. "no name/number", "no pockets") for an order this
+   * customer ALREADY has -- applied to whichever order/team is picked on review. */
+  special_instructions?: string | null;
   /** A brand-new order for this existing customer (not an update to one they already have). */
   new_order?: {
     label?: string | null;
@@ -432,6 +436,7 @@ export interface AiDraftPayload {
     payment_status?: PaymentStatus;
     /** Set when this draft came from a Reckon invoice, so approval links the two records. */
     reckon_invoice_id?: string | null;
+    special_instructions?: string | null;
     team?: {
       team_name: string;
       players: AiDraftPlayer[];

@@ -455,6 +455,19 @@ function UpdateDraftForm({
             </div>
           </div>
 
+          <div className="mt-3">
+            <label className="block text-xs font-medium text-slate-600">
+              Special instructions (optional)
+            </label>
+            <textarea
+              name="new_order_special_instructions"
+              rows={2}
+              defaultValue={p.new_order.special_instructions ?? ""}
+              placeholder="e.g. Customer doesn't want jersey name/number. No pockets on shorts."
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+
           {p.new_order.reckon_invoice_id && (
             <>
               <p className="mt-2 text-xs text-slate-400">
@@ -509,6 +522,21 @@ function UpdateDraftForm({
               </option>
             ))}
           </select>
+        </div>
+      )}
+
+      {teamOptions.length > 0 && (
+        <div>
+          <label className="block text-xs font-medium text-slate-600">
+            Special instructions for that order (optional)
+          </label>
+          <textarea
+            name="special_instructions"
+            rows={2}
+            defaultValue={p.special_instructions ?? ""}
+            placeholder="e.g. Customer doesn't want jersey name/number. No pockets on shorts."
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+          />
         </div>
       )}
 
