@@ -16,6 +16,7 @@ export async function GET() {
   }
 
   const state = crypto.randomBytes(16).toString("hex");
+  const nonce = crypto.randomBytes(16).toString("hex");
   const cookieStore = await cookies();
   cookieStore.set("reckon_oauth_state", state, {
     httpOnly: true,
@@ -32,6 +33,7 @@ export async function GET() {
   authorizeUrl.searchParams.set("redirect_uri", redirectUri);
   authorizeUrl.searchParams.set("scope", scope);
   authorizeUrl.searchParams.set("state", state);
+  authorizeUrl.searchParams.set("nonce", nonce);
 
   return NextResponse.redirect(authorizeUrl.toString());
 }
