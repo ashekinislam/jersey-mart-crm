@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { PaymentStatus, ReckonConnection } from "@/lib/types";
+import type { AiDraftPayload, Order, PaymentStatus, ReckonConnection } from "@/lib/types";
 
 const TOKEN_URL = "https://identity.reckon.com/connect/token";
 const API_BASE = "https://api-v2.reckonone.com";
@@ -80,12 +80,12 @@ async function refreshAccessToken(
 }
 
 export async function getReckonConnection(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  ownerId?: string
 ): Promise<ReckonConnection | null> {
-  const { data } = await supabase
-    .from("reckon_connections")
-    .select("*")
-    .maybeSingle();
+  let query = supabase.from("reckon_connections").select("*");
+  if (ownerId) query = query.eq("owner_id", ownerId);
+  const { data } = await query.maybeSingle();
   return data as ReckonConnection | null;
 }
 
@@ -133,4 +133,141 @@ export async function reckonApiGet(
   }
 
   return { ok: res.ok, status: res.status, body };
+}
+
+export interface ReckonSyncSummary {
+  ok: boolean;
+  error?: string;
+  updated: number;
+  linked: number;
+  drafted: number;
+}
+
+/** Pulls invoices from the connected Reckon One book and reconciles them against
+ * orders for this owner. Shared by the interactive "Sync now" button and the
+ * scheduled cron job -- same logic, same safety rules, either way. */
+export async function runReckonSync(
+  supabase: SupabaseClient,
+  ownerId: string
+): Promise<ReckonSyncSummary> {
+  const connection = await getReckonConnection(supabase, ownerId);
+  if (!connection?.book_id) {
+    return { ok: false, error: "not_ready", updated: 0, linked: 0, drafted: 0 };
+  }
+
+  const accessToken = await getValidAccessToken(supabase, connection);
+  if (!accessToken) {
+    return { ok: false, error: "token_failed", updated: 0, linked: 0, drafted: 0 };
+  }
+
+  const result = await reckonApiGet(accessToken, connection.book_id, "/invoices");
+  if (!result.ok) {
+    return { ok: false, error: "fetch_failed", updated: 0, linked: 0, drafted: 0 };
+  }
+
+  const invoices = ((result.body as { list?: ReckonInvoice[] })?.list ??
+    []) as ReckonInvoice[];
+
+  const { data: existingOrders } = await supabase
+    .from("orders")
+    .select("id, label, payment_status, reckon_invoice_id")
+    .eq("owner_id", ownerId);
+
+  const byInvoiceId = new Map<string, Pick<Order, "id" | "payment_status">>();
+  const unlinkedOrders: Pick<Order, "id" | "label">[] = [];
+  for (const o of (existingOrders ?? []) as Pick<
+    Order,
+    "id" | "label" | "payment_status" | "reckon_invoice_id"
+  >[]) {
+    if (o.reckon_invoice_id) {
+      byInvoiceId.set(o.reckon_invoice_id, o);
+    } else {
+      unlinkedOrders.push(o);
+    }
+  }
+
+  const { data: pendingDrafts } = await supabase
+    .from("ai_drafts")
+    .select("payload")
+    .eq("status", "pending")
+    .eq("owner_id", ownerId);
+  const alreadyDrafted = new Set(
+    ((pendingDrafts ?? []) as { payload: AiDraftPayload }[])
+      .map((d) => d.payload.new_order?.reckon_invoice_id)
+      .filter((id): id is string => !!id)
+  );
+
+  let updated = 0;
+  let linked = 0;
+  let drafted = 0;
+
+  for (const invoice of invoices) {
+    const newStatus = mapReckonInvoiceToPaymentStatus(invoice);
+
+    const linkedOrder = byInvoiceId.get(invoice.id);
+    if (linkedOrder) {
+      if (linkedOrder.payment_status !== newStatus) {
+        await supabase
+          .from("orders")
+          .update({ payment_status: newStatus, updated_at: new Date().toISOString() })
+          .eq("id", linkedOrder.id);
+        updated++;
+      }
+      continue;
+    }
+
+    const invoiceNumber = invoice.invoiceNumber?.trim();
+    const backfillMatch =
+      invoiceNumber && invoiceNumber.length >= 3
+        ? unlinkedOrders.find((o) => o.label?.includes(invoiceNumber))
+        : undefined;
+
+    if (backfillMatch) {
+      await supabase
+        .from("orders")
+        .update({
+          reckon_invoice_id: invoice.id,
+          payment_status: newStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", backfillMatch.id);
+      linked++;
+      continue;
+    }
+
+    if (alreadyDrafted.has(invoice.id)) continue;
+
+    const hint = invoice.customer?.name?.trim();
+    if (!hint) continue;
+
+    const { data: matches } = await supabase
+      .from("customers")
+      .select("id")
+      .eq("owner_id", ownerId)
+      .ilike("name", `%${hint}%`);
+    const matched_customer_id =
+      matches && matches.length === 1 ? matches[0].id : null;
+
+    const payload: AiDraftPayload = {
+      kind: "update_existing",
+      customer_name_hint: hint,
+      matched_customer_id,
+      new_order: {
+        label: `Invoice #${invoice.invoiceNumber}`,
+        sale_amount: reckonInvoiceGrandTotal(invoice),
+        payment_status: newStatus,
+        reckon_invoice_id: invoice.id,
+      },
+    };
+
+    await supabase.from("ai_drafts").insert({
+      owner_id: ownerId,
+      raw_prompt: `Synced from Reckon — Invoice #${invoice.invoiceNumber} for ${hint}`,
+      payload,
+      status: "pending",
+    });
+    drafted++;
+  }
+
+  return { ok: true, updated, linked, drafted };
 }
