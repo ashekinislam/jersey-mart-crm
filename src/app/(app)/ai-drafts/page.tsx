@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
   CUSTOMER_STATUSES,
+  PAYMENT_STATUS_LABELS,
+  PAYMENT_STATUSES,
   STATUS_LABELS,
   type AiDraft,
   type Customer,
@@ -435,7 +437,36 @@ function UpdateDraftForm({
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
               />
             </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600">
+                Payment status
+              </label>
+              <select
+                name="new_order_payment_status"
+                defaultValue={p.new_order.payment_status ?? "unpaid"}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              >
+                {PAYMENT_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {PAYMENT_STATUS_LABELS[s]}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+
+          {p.new_order.reckon_invoice_id && (
+            <>
+              <p className="mt-2 text-xs text-slate-400">
+                Synced from Reckon (invoice {p.new_order.reckon_invoice_id})
+              </p>
+              <input
+                type="hidden"
+                name="new_order_reckon_invoice_id"
+                value={p.new_order.reckon_invoice_id}
+              />
+            </>
+          )}
 
           {p.new_order.team && (
             <div className="mt-3">

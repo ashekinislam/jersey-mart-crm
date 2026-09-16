@@ -41,9 +41,14 @@ create table if not exists orders (
   sale_amount numeric(10,2),
   supplier_cost numeric(10,2),
   freight_cost numeric(10,2),
+  reckon_invoice_id text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create unique index if not exists orders_reckon_invoice_id_idx
+  on orders(reckon_invoice_id)
+  where reckon_invoice_id is not null;
 
 create table if not exists teams (
   id uuid primary key default gen_random_uuid(),

@@ -79,6 +79,7 @@ export interface Order {
   sale_amount: number | null;
   supplier_cost: number | null;
   freight_cost: number | null;
+  reckon_invoice_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -428,6 +429,9 @@ export interface AiDraftPayload {
     sale_amount?: number | null;
     supplier_cost?: number | null;
     freight_cost?: number | null;
+    payment_status?: PaymentStatus;
+    /** Set when this draft came from a Reckon invoice, so approval links the two records. */
+    reckon_invoice_id?: string | null;
     team?: {
       team_name: string;
       players: AiDraftPlayer[];

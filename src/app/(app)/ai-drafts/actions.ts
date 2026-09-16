@@ -4,7 +4,12 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { parseSupplierText } from "@/lib/supplierFormat";
-import type { ContactChannel, CustomerStatus, DesignStage } from "@/lib/types";
+import type {
+  ContactChannel,
+  CustomerStatus,
+  DesignStage,
+  PaymentStatus,
+} from "@/lib/types";
 
 export async function approveAiDraft(draftId: string, formData: FormData) {
   const supabase = await createClient();
@@ -134,6 +139,12 @@ export async function approveUpdateDraft(draftId: string, formData: FormData) {
       return Number.isFinite(n) ? n : null;
     };
 
+    const payment_status = String(
+      formData.get("new_order_payment_status") ?? ""
+    ).trim() as PaymentStatus | "";
+    const reckon_invoice_id =
+      String(formData.get("new_order_reckon_invoice_id") ?? "").trim() || null;
+
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
@@ -144,6 +155,8 @@ export async function approveUpdateDraft(draftId: string, formData: FormData) {
         sale_amount: parseAmount("new_order_sale_amount"),
         supplier_cost: parseAmount("new_order_supplier_cost"),
         freight_cost: parseAmount("new_order_freight_cost"),
+        ...(payment_status ? { payment_status } : {}),
+        reckon_invoice_id,
       })
       .select("id")
       .single();
