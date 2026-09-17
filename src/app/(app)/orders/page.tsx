@@ -7,6 +7,7 @@ import {
   PAYMENT_STATUS_COLORS,
   PAYMENT_STATUS_LABELS,
   PAYMENT_STATUSES,
+  PRODUCT_TYPE_OPTIONS,
   SHIPPING_STATUS_COLORS,
   SHIPPING_STATUS_LABELS,
   SHIPPING_STATUSES,
@@ -17,14 +18,15 @@ import {
   addOrderFromList,
   deleteOrderFromList,
   updateOrderDateQuick,
+  updateOrderProductTypes,
   updateOrderStatusQuick,
   updatePaymentStatusQuick,
   updateShippingStatusQuick,
 } from "../actions";
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 import { AutoSubmitInput } from "@/components/AutoSubmitInput";
+import { AutoSubmitProductTypes } from "@/components/AutoSubmitProductTypes";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
-import { ProductTypePills } from "@/components/ProductTypePills";
 
 const RECENCY_OPTIONS = [
   { value: "all", label: "All time" },
@@ -198,6 +200,14 @@ export default async function OrdersPage({
                   order.customer_id,
                   order.id
                 );
+                const updateProductTypesWithIds = updateOrderProductTypes.bind(
+                  null,
+                  order.customer_id,
+                  order.id
+                );
+                const customProductTypes = order.product_types.filter(
+                  (t) => !PRODUCT_TYPE_OPTIONS.includes(t)
+                );
                 return (
                   <div
                     key={order.id}
@@ -219,7 +229,6 @@ export default async function OrdersPage({
                             ⚠ {order.special_instructions}
                           </p>
                         )}
-                        <ProductTypePills types={order.product_types} />
                       </Link>
                       <div className="mt-1 flex items-center gap-1.5">
                         <span className="text-xs text-slate-400">Ordered</span>
@@ -228,6 +237,14 @@ export default async function OrdersPage({
                           defaultValue={order.order_date}
                           action={updateOrderDateWithIds}
                           className="rounded-md border border-slate-300 px-1.5 py-0.5 text-xs text-slate-600"
+                        />
+                      </div>
+                      <div className="mt-1.5">
+                        <AutoSubmitProductTypes
+                          options={PRODUCT_TYPE_OPTIONS}
+                          defaultValues={order.product_types}
+                          customTypes={customProductTypes}
+                          action={updateProductTypesWithIds}
                         />
                       </div>
                     </div>
