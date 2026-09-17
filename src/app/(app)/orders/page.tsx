@@ -24,6 +24,7 @@ import {
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 import { AutoSubmitInput } from "@/components/AutoSubmitInput";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
+import { ProductTypePills } from "@/components/ProductTypePills";
 
 const RECENCY_OPTIONS = [
   { value: "all", label: "All time" },
@@ -218,6 +219,7 @@ export default async function OrdersPage({
                             ⚠ {order.special_instructions}
                           </p>
                         )}
+                        <ProductTypePills types={order.product_types} />
                       </Link>
                       <div className="mt-1 flex items-center gap-1.5">
                         <span className="text-xs text-slate-400">Ordered</span>

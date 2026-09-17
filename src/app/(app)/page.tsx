@@ -20,6 +20,7 @@ import {
 } from "./actions";
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 import { BreakdownCard } from "@/components/StatBreakdown";
+import { ProductTypePills } from "@/components/ProductTypePills";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -138,6 +139,7 @@ export default async function DashboardPage() {
                         ⚠ {order.special_instructions}
                       </p>
                     )}
+                    <ProductTypePills types={order.product_types} />
                   </Link>
                   <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
                     <AutoSubmitSelect

@@ -474,6 +474,33 @@ export async function updateOrderInstructions(
   revalidatePath("/orders");
 }
 
+export async function updateOrderProductTypes(
+  customerId: string,
+  orderId: string,
+  formData: FormData
+) {
+  const selected = formData
+    .getAll("product_types")
+    .map((v) => String(v).trim())
+    .filter(Boolean);
+  const other = String(formData.get("product_types_other") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const product_types = [...new Set([...selected, ...other])];
+
+  const supabase = await createClient();
+  await supabase
+    .from("orders")
+    .update({ product_types, updated_at: new Date().toISOString() })
+    .eq("id", orderId);
+
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath("/orders");
+  revalidatePath("/");
+}
+
 export async function uploadInvoice(
   customerId: string,
   orderId: string,

@@ -12,6 +12,8 @@ import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { OrderTrackingCard } from "@/components/OrderTrackingCard";
 import { OrderCostsCard } from "@/components/OrderCostsCard";
 import { OrderInstructionsCard } from "@/components/OrderInstructionsCard";
+import { OrderProductTypesCard } from "@/components/OrderProductTypesCard";
+import { ProductTypePills } from "@/components/ProductTypePills";
 import { OrderTeamsSection } from "@/components/OrderTeamsSection";
 
 /**
@@ -48,9 +50,12 @@ export async function CustomerOrdersSection({
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <h2 className="text-sm font-semibold text-slate-900">
-            Order: {order.label || new Date(order.order_date).toLocaleDateString()}
-          </h2>
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">
+              Order: {order.label || new Date(order.order_date).toLocaleDateString()}
+            </h2>
+            <ProductTypePills types={order.product_types} />
+          </div>
           <div className="flex items-center gap-2">
             <Link
               href={`/customers/${customerId}/orders/${order.id}/build`}
@@ -77,6 +82,11 @@ export async function CustomerOrdersSection({
           </div>
         </div>
         <OrderInstructionsCard
+          customerId={customerId}
+          orderId={order.id}
+          order={order}
+        />
+        <OrderProductTypesCard
           customerId={customerId}
           orderId={order.id}
           order={order}
@@ -143,6 +153,7 @@ export async function CustomerOrdersSection({
                   ⚠ {order.special_instructions}
                 </p>
               )}
+              <ProductTypePills types={order.product_types} />
             </div>
             <div className="flex shrink-0 gap-1.5">
               <span

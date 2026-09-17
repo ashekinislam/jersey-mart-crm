@@ -81,6 +81,7 @@ export interface Order {
   freight_cost: number | null;
   reckon_invoice_id: string | null;
   special_instructions: string | null;
+  product_types: string[];
   created_at: string;
   updated_at: string;
 }
@@ -92,6 +93,21 @@ export interface Team {
   team_name: string;
   created_at: string;
 }
+
+/** Preset checkboxes on the order form. product_types itself is free-form
+ * (text[]) -- anything typed into "Other" is kept even if not in this list. */
+export const PRODUCT_TYPE_OPTIONS: string[] = [
+  "Jerseys",
+  "Shorts",
+  "Socks",
+  "Shirts",
+  "Polo shirts",
+  "Singlets",
+  "Hoodies",
+  "Caps",
+  "Hats",
+  "Beanies",
+];
 
 export const ORDER_TRACKING_STATUSES: OrderTrackingStatus[] = [
   "quote_sent",

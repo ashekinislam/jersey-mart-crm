@@ -7,6 +7,8 @@ import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { OrderTrackingCard } from "@/components/OrderTrackingCard";
 import { OrderCostsCard } from "@/components/OrderCostsCard";
 import { OrderInstructionsCard } from "@/components/OrderInstructionsCard";
+import { OrderProductTypesCard } from "@/components/OrderProductTypesCard";
+import { ProductTypePills } from "@/components/ProductTypePills";
 import { OrderTeamsSection } from "@/components/OrderTeamsSection";
 
 export default async function OrderDetailPage({
@@ -50,6 +52,7 @@ export default async function OrderDetailPage({
           <h1 className="text-lg font-semibold text-slate-900">
             {o.label || `Order — ${new Date(o.order_date).toLocaleDateString()}`}
           </h1>
+          <ProductTypePills types={o.product_types} />
         </div>
         <div className="flex items-center gap-2">
           <Link
@@ -70,6 +73,7 @@ export default async function OrderDetailPage({
       </div>
 
       <OrderInstructionsCard customerId={id} orderId={orderId} order={o} />
+      <OrderProductTypesCard customerId={id} orderId={orderId} order={o} />
       <OrderTrackingCard
         customerId={id}
         orderId={orderId}
