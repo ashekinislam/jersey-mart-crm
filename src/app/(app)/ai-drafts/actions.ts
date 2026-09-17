@@ -55,8 +55,18 @@ export async function approveAiDraft(draftId: string, formData: FormData) {
   const deadline = String(formData.get("deadline") ?? "").trim() || null;
   const team_name = String(formData.get("team_name") ?? "").trim();
   const players_text = String(formData.get("players_text") ?? "").trim();
+  const order_product_types = [
+    ...new Set([
+      ...formData.getAll("order_product_types").map((v) => String(v).trim()),
+      ...String(formData.get("order_product_types_other") ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ]),
+  ];
 
-  const needsOrder = order_label || deadline || team_name;
+  const needsOrder =
+    order_label || deadline || team_name || order_product_types.length > 0;
   if (needsOrder) {
     const { data: order, error: orderError } = await supabase
       .from("orders")
@@ -65,6 +75,7 @@ export async function approveAiDraft(draftId: string, formData: FormData) {
         customer_id: customer.id,
         label: order_label,
         deadline,
+        product_types: order_product_types,
       })
       .select("id")
       .single();
@@ -146,6 +157,15 @@ export async function approveUpdateDraft(draftId: string, formData: FormData) {
       String(formData.get("new_order_reckon_invoice_id") ?? "").trim() || null;
     const new_order_special_instructions =
       String(formData.get("new_order_special_instructions") ?? "").trim() || null;
+    const new_order_product_types = [
+      ...new Set([
+        ...formData.getAll("new_order_product_types").map((v) => String(v).trim()),
+        ...String(formData.get("new_order_product_types_other") ?? "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+      ]),
+    ];
 
     const { data: order, error: orderError } = await supabase
       .from("orders")
@@ -160,6 +180,7 @@ export async function approveUpdateDraft(draftId: string, formData: FormData) {
         ...(payment_status ? { payment_status } : {}),
         reckon_invoice_id,
         special_instructions: new_order_special_instructions,
+        product_types: new_order_product_types,
       })
       .select("id")
       .single();
@@ -226,6 +247,25 @@ export async function approveUpdateDraft(draftId: string, formData: FormData) {
       .from("orders")
       .update({
         special_instructions,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existing_order_id);
+  }
+
+  const product_types = [
+    ...new Set([
+      ...formData.getAll("product_types").map((v) => String(v).trim()),
+      ...String(formData.get("product_types_other") ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ]),
+  ];
+  if (product_types.length > 0 && existing_order_id) {
+    await supabase
+      .from("orders")
+      .update({
+        product_types,
         updated_at: new Date().toISOString(),
       })
       .eq("id", existing_order_id);

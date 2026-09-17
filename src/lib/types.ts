@@ -428,6 +428,7 @@ export interface AiDraftPayload {
   order?: {
     label?: string | null;
     deadline?: string | null;
+    product_types?: string[];
   } | null;
   team?: {
     team_name: string;
@@ -442,6 +443,9 @@ export interface AiDraftPayload {
   /** Production constraints (e.g. "no name/number", "no pockets") for an order this
    * customer ALREADY has -- applied to whichever order/team is picked on review. */
   special_instructions?: string | null;
+  /** What's in an order this customer ALREADY has, e.g. ["Jerseys", "Shorts"] --
+   * applied to whichever order/team is picked on review. */
+  product_types?: string[];
   /** A brand-new order for this existing customer (not an update to one they already have). */
   new_order?: {
     label?: string | null;
@@ -453,6 +457,7 @@ export interface AiDraftPayload {
     /** Set when this draft came from a Reckon invoice, so approval links the two records. */
     reckon_invoice_id?: string | null;
     special_instructions?: string | null;
+    product_types?: string[];
     team?: {
       team_name: string;
       players: AiDraftPlayer[];

@@ -4,6 +4,7 @@ import {
   CUSTOMER_STATUSES,
   PAYMENT_STATUS_LABELS,
   PAYMENT_STATUSES,
+  PRODUCT_TYPE_OPTIONS,
   STATUS_LABELS,
   type AiDraft,
   type Customer,
@@ -24,6 +25,49 @@ interface DraftTeamOption {
   id: string;
   team_name: string;
   order_label: string;
+}
+
+function ProductTypeCheckboxes({
+  name,
+  otherName,
+  defaultValues,
+}: {
+  name: string;
+  otherName: string;
+  defaultValues: string[];
+}) {
+  const custom = defaultValues.filter((t) => !PRODUCT_TYPE_OPTIONS.includes(t));
+
+  return (
+    <div className="mt-3">
+      <label className="block text-xs font-medium text-slate-600">
+        What&rsquo;s in this order?
+      </label>
+      <div className="mt-1 flex flex-wrap gap-3">
+        {PRODUCT_TYPE_OPTIONS.map((option) => (
+          <label
+            key={option}
+            className="flex items-center gap-1.5 text-sm text-slate-700"
+          >
+            <input
+              type="checkbox"
+              name={name}
+              value={option}
+              defaultChecked={defaultValues.includes(option)}
+              className="rounded border-slate-300"
+            />
+            {option}
+          </label>
+        ))}
+      </div>
+      <input
+        name={otherName}
+        defaultValue={custom.join(", ")}
+        placeholder="Other (comma separated)"
+        className="mt-2 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+      />
+    </div>
+  );
 }
 
 export default async function AiDraftsPage() {
@@ -291,6 +335,11 @@ function NewCustomerDraftForm({ draft }: { draft: AiDraft }) {
               />
             </div>
           </div>
+          <ProductTypeCheckboxes
+            name="order_product_types"
+            otherName="order_product_types_other"
+            defaultValues={order?.product_types ?? []}
+          />
         </div>
       )}
 
@@ -468,6 +517,12 @@ function UpdateDraftForm({
             />
           </div>
 
+          <ProductTypeCheckboxes
+            name="new_order_product_types"
+            otherName="new_order_product_types_other"
+            defaultValues={p.new_order.product_types ?? []}
+          />
+
           {p.new_order.reckon_invoice_id && (
             <>
               <p className="mt-2 text-xs text-slate-400">
@@ -536,6 +591,11 @@ function UpdateDraftForm({
             defaultValue={p.special_instructions ?? ""}
             placeholder="e.g. Customer doesn't want jersey name/number. No pockets on shorts."
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+          />
+          <ProductTypeCheckboxes
+            name="product_types"
+            otherName="product_types_other"
+            defaultValues={p.product_types ?? []}
           />
         </div>
       )}
