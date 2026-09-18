@@ -190,12 +190,6 @@ export async function runReckonSync(
     if (pageInvoices.length < perPage) break;
   }
 
-  console.log(
-    "[reckon-debug] total invoices fetched:",
-    invoices.length,
-    invoices.map((i) => `${i.invoiceNumber}@${i.invoiceDate}#${i.id}`)
-  );
-
   const { data: existingOrders } = await supabase
     .from("orders")
     .select("id, label, payment_status, reckon_invoice_id")
@@ -240,10 +234,6 @@ export async function runReckonSync(
           .update({ payment_status: newStatus, updated_at: new Date().toISOString() })
           .eq("id", linkedOrder.id);
         updated++;
-      } else {
-        console.log(
-          `[reckon-debug] ${invoice.invoiceNumber}#${invoice.id} already linked, status unchanged (${newStatus})`
-        );
       }
       continue;
     }
@@ -267,20 +257,10 @@ export async function runReckonSync(
       continue;
     }
 
-    if (alreadyDrafted.has(invoice.id)) {
-      console.log(
-        `[reckon-debug] ${invoice.invoiceNumber}#${invoice.id} skipped, already has a pending draft`
-      );
-      continue;
-    }
+    if (alreadyDrafted.has(invoice.id)) continue;
 
     const hint = invoice.customer?.name?.trim();
-    if (!hint) {
-      console.log(
-        `[reckon-debug] ${invoice.invoiceNumber}#${invoice.id} skipped, no customer name on invoice`
-      );
-      continue;
-    }
+    if (!hint) continue;
 
     const { data: matches } = await supabase
       .from("customers")
