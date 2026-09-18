@@ -11,15 +11,16 @@ import type {
   PaymentStatus,
 } from "@/lib/types";
 
-export async function approveAiDraft(draftId: string, formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
+/** Shared by approving a new_customer draft and manually adding a customer
+ * straight from the AI drafts page -- same fields, same form, same result;
+ * the only difference is whether there's a draft row to mark reviewed after. */
+async function createCustomerFromForm(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  formData: FormData
+): Promise<string | null> {
   const name = String(formData.get("name") ?? "").trim();
-  if (!name) return;
+  if (!name) return null;
 
   const contact_channel = String(
     formData.get("contact_channel") ?? "phone"
@@ -36,7 +37,7 @@ export async function approveAiDraft(draftId: string, formData: FormData) {
   const { data: customer, error: customerError } = await supabase
     .from("customers")
     .insert({
-      owner_id: user.id,
+      owner_id: userId,
       name,
       contact_channel,
       contact_handle,
@@ -49,7 +50,7 @@ export async function approveAiDraft(draftId: string, formData: FormData) {
     })
     .select("id")
     .single();
-  if (customerError || !customer) return;
+  if (customerError || !customer) return null;
 
   const order_label = String(formData.get("order_label") ?? "").trim() || null;
   const deadline = String(formData.get("deadline") ?? "").trim() || null;
@@ -71,7 +72,7 @@ export async function approveAiDraft(draftId: string, formData: FormData) {
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
-        owner_id: user.id,
+        owner_id: userId,
         customer_id: customer.id,
         label: order_label,
         deadline,
@@ -83,7 +84,7 @@ export async function approveAiDraft(draftId: string, formData: FormData) {
     if (!orderError && order && team_name) {
       const { data: team, error: teamError } = await supabase
         .from("teams")
-        .insert({ owner_id: user.id, order_id: order.id, team_name })
+        .insert({ owner_id: userId, order_id: order.id, team_name })
         .select("id")
         .single();
 
@@ -92,7 +93,7 @@ export async function approveAiDraft(draftId: string, formData: FormData) {
         if (parsed.length > 0) {
           await supabase.from("players").insert(
             parsed.map((p) => ({
-              owner_id: user.id,
+              owner_id: userId,
               team_id: team.id,
               player_name: p.player_name,
               name_on_back: p.name_on_back,
@@ -105,11 +106,24 @@ export async function approveAiDraft(draftId: string, formData: FormData) {
     }
   }
 
+  return customer.id;
+}
+
+export async function approveAiDraft(draftId: string, formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const customerId = await createCustomerFromForm(supabase, user.id, formData);
+  if (!customerId) return;
+
   await supabase
     .from("ai_drafts")
     .update({
       status: "approved",
-      created_customer_id: customer.id,
+      created_customer_id: customerId,
       reviewed_at: new Date().toISOString(),
     })
     .eq("id", draftId);
@@ -118,7 +132,24 @@ export async function approveAiDraft(draftId: string, formData: FormData) {
   revalidatePath("/customers");
   revalidatePath("/orders");
   revalidatePath("/");
-  redirect(`/customers/${customer.id}`);
+  redirect(`/customers/${customerId}`);
+}
+
+export async function createCustomerManually(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const customerId = await createCustomerFromForm(supabase, user.id, formData);
+  if (!customerId) return;
+
+  revalidatePath("/ai-drafts");
+  revalidatePath("/customers");
+  revalidatePath("/orders");
+  revalidatePath("/");
+  redirect(`/customers/${customerId}`);
 }
 
 export async function approveUpdateDraft(draftId: string, formData: FormData) {

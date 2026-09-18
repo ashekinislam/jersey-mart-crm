@@ -9,7 +9,12 @@ import {
   type AiDraft,
   type Customer,
 } from "@/lib/types";
-import { approveAiDraft, approveUpdateDraft, rejectAiDraft } from "./actions";
+import {
+  approveAiDraft,
+  approveUpdateDraft,
+  createCustomerManually,
+  rejectAiDraft,
+} from "./actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { playersToText } from "./helpers";
 
@@ -139,6 +144,23 @@ export default async function AiDraftsPage() {
         </Link>
       </div>
 
+      <details className="group rounded-lg border border-slate-200 bg-white p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+          + Add a new customer manually
+        </summary>
+        <p className="mt-1 text-xs text-slate-500">
+          Same form ChatGPT drafts use, minus the review step — this creates
+          the customer (and order/team, if filled in) right away.
+        </p>
+        <CustomerOrderForm
+          action={createCustomerManually}
+          customer={{ name: "" }}
+          order={{}}
+          team={{ team_name: "", players: [] }}
+          submitLabel="Create customer"
+        />
+      </details>
+
       {pendingList.length === 0 && (
         <p className="rounded-lg border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
           No drafts waiting for review.
@@ -193,12 +215,35 @@ export default async function AiDraftsPage() {
 
 function NewCustomerDraftForm({ draft }: { draft: AiDraft }) {
   const approveWithId = approveAiDraft.bind(null, draft.id);
-  const c = draft.payload.customer!;
-  const order = draft.payload.order;
-  const team = draft.payload.team;
 
   return (
-    <form action={approveWithId} className="mt-4 space-y-4">
+    <CustomerOrderForm
+      action={approveWithId}
+      customer={draft.payload.customer!}
+      order={draft.payload.order}
+      team={draft.payload.team}
+      submitLabel="Approve & create"
+    />
+  );
+}
+
+function CustomerOrderForm({
+  action,
+  customer,
+  order,
+  team,
+  submitLabel,
+}: {
+  action: (formData: FormData) => Promise<void>;
+  customer: NonNullable<AiDraft["payload"]["customer"]>;
+  order?: AiDraft["payload"]["order"];
+  team?: AiDraft["payload"]["team"];
+  submitLabel: string;
+}) {
+  const c = customer;
+
+  return (
+    <form action={action} className="mt-4 space-y-4">
       <div>
         <h3 className="text-sm font-semibold text-slate-900">Customer</h3>
         <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -377,7 +422,7 @@ function NewCustomerDraftForm({ draft }: { draft: AiDraft }) {
           type="submit"
           className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
         >
-          Approve & create
+          {submitLabel}
         </button>
       </div>
     </form>
