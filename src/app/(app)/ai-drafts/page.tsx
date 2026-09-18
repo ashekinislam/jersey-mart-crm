@@ -379,12 +379,52 @@ function CustomerOrderForm({
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
               />
             </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600">
+                Sale amount
+              </label>
+              <input
+                name="order_sale_amount"
+                type="number"
+                step="0.01"
+                defaultValue={order?.sale_amount ?? ""}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600">
+                Payment status
+              </label>
+              <select
+                name="order_payment_status"
+                defaultValue={order?.payment_status ?? "unpaid"}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+              >
+                {PAYMENT_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {PAYMENT_STATUS_LABELS[s]}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <ProductTypeCheckboxes
             name="order_product_types"
             otherName="order_product_types_other"
             defaultValues={order?.product_types ?? []}
           />
+          {order?.reckon_invoice_id && (
+            <>
+              <p className="mt-2 text-xs text-slate-400">
+                Synced from Reckon (invoice {order.reckon_invoice_id})
+              </p>
+              <input
+                type="hidden"
+                name="order_reckon_invoice_id"
+                value={order.reckon_invoice_id}
+              />
+            </>
+          )}
         </div>
       )}
 

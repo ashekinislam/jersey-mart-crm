@@ -17,6 +17,65 @@ export interface ReckonInvoice {
   emailStatus: string;
 }
 
+export interface ReckonCustomerDetail {
+  id: string;
+  name: string;
+  phoneNumbers?: {
+    type: { name: string };
+    countryCode: string;
+    areaCode: string;
+    number: string;
+  }[];
+  electronicAddresses?: { type: { name: string }; address: string }[];
+  addresses?: {
+    type: { name: string };
+    line1: string;
+    line2: string;
+    line3: string;
+    suburb: string;
+    state: string;
+    postcode: string;
+  }[];
+}
+
+/** Pulls a phone/email/address out of Reckon's customer record for prefilling
+ * a new-customer draft -- preferring Mobile over Phone, and Postal over
+ * Shipping/Business for the address, same priority Reckon's own UI uses. */
+export function extractReckonContact(customer: ReckonCustomerDetail): {
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  state: string | null;
+} {
+  const phoneByType = (name: string) =>
+    customer.phoneNumbers?.find((p) => p.type.name === name && p.number.trim());
+  const phoneEntry = phoneByType("Mobile") ?? phoneByType("Phone");
+  const phone = phoneEntry
+    ? `${phoneEntry.countryCode}${phoneEntry.areaCode}${phoneEntry.number}`.trim()
+    : null;
+
+  const email =
+    customer.electronicAddresses?.find(
+      (e) => e.type.name === "Email" && e.address.trim()
+    )?.address ?? null;
+
+  const addressByType = (name: string) =>
+    customer.addresses?.find(
+      (a) => a.type.name === name && (a.line1.trim() || a.suburb.trim())
+    );
+  const addressEntry =
+    addressByType("Postal") ?? addressByType("Shipping") ?? addressByType("Business");
+  const address = addressEntry
+    ? [addressEntry.line1, addressEntry.line2, addressEntry.line3, addressEntry.suburb]
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join(", ") || null
+    : null;
+  const state = addressEntry?.state.trim() || null;
+
+  return { phone, email, address, state };
+}
+
 /** Reckon has no "partially paid" invoice status of its own -- balance vs. the
  * grand total is the only signal, so we derive our four-state payment_status from it. */
 export function reckonInvoiceGrandTotal(invoice: ReckonInvoice): number {
@@ -215,7 +274,7 @@ export async function runReckonSync(
     .eq("owner_id", ownerId);
   const alreadyDrafted = new Set(
     ((pendingDrafts ?? []) as { payload: AiDraftPayload }[])
-      .map((d) => d.payload.new_order?.reckon_invoice_id)
+      .map((d) => d.payload.new_order?.reckon_invoice_id ?? d.payload.order?.reckon_invoice_id)
       .filter((id): id is string => !!id)
   );
 
@@ -267,20 +326,57 @@ export async function runReckonSync(
       .select("id")
       .eq("owner_id", ownerId)
       .ilike("name", `%${hint}%`);
-    const matched_customer_id =
-      matches && matches.length === 1 ? matches[0].id : null;
 
-    const payload: AiDraftPayload = {
-      kind: "update_existing",
-      customer_name_hint: hint,
-      matched_customer_id,
-      new_order: {
-        label: `Invoice #${invoice.invoiceNumber}`,
-        sale_amount: reckonInvoiceGrandTotal(invoice),
-        payment_status: newStatus,
-        reckon_invoice_id: invoice.id,
-      },
-    };
+    let payload: AiDraftPayload;
+    if (!matches || matches.length === 0) {
+      // Nobody in the CRM even loosely matches this name -- pull the
+      // customer's contact details from Reckon so the owner doesn't have
+      // to retype them by hand when approving.
+      let contact: ReckonCustomerDetail | null = null;
+      if (invoice.customer?.id) {
+        const detailResult = await reckonApiGet(
+          accessToken,
+          connection.book_id,
+          `/customers/${invoice.customer.id}`
+        );
+        if (detailResult.ok) contact = detailResult.body as ReckonCustomerDetail;
+      }
+      const { phone, email, address, state } = contact
+        ? extractReckonContact(contact)
+        : { phone: null, email: null, address: null, state: null };
+
+      payload = {
+        kind: "new_customer",
+        customer: {
+          name: hint,
+          contact_channel: "phone",
+          phone,
+          email,
+          address,
+          state,
+          status: "lead",
+        },
+        order: {
+          label: `Invoice #${invoice.invoiceNumber}`,
+          sale_amount: reckonInvoiceGrandTotal(invoice),
+          payment_status: newStatus,
+          reckon_invoice_id: invoice.id,
+        },
+      };
+    } else {
+      const matched_customer_id = matches.length === 1 ? matches[0].id : null;
+      payload = {
+        kind: "update_existing",
+        customer_name_hint: hint,
+        matched_customer_id,
+        new_order: {
+          label: `Invoice #${invoice.invoiceNumber}`,
+          sale_amount: reckonInvoiceGrandTotal(invoice),
+          payment_status: newStatus,
+          reckon_invoice_id: invoice.id,
+        },
+      };
+    }
 
     await supabase.from("ai_drafts").insert({
       owner_id: ownerId,

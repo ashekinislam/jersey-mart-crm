@@ -65,9 +65,23 @@ async function createCustomerFromForm(
         .filter(Boolean),
     ]),
   ];
+  const order_sale_amount_raw = String(formData.get("order_sale_amount") ?? "").trim();
+  const order_sale_amount = order_sale_amount_raw
+    ? Number(order_sale_amount_raw)
+    : null;
+  const order_payment_status = String(
+    formData.get("order_payment_status") ?? ""
+  ).trim() as PaymentStatus | "";
+  const order_reckon_invoice_id =
+    String(formData.get("order_reckon_invoice_id") ?? "").trim() || null;
 
   const needsOrder =
-    order_label || deadline || team_name || order_product_types.length > 0;
+    order_label ||
+    deadline ||
+    team_name ||
+    order_product_types.length > 0 ||
+    order_sale_amount !== null ||
+    order_reckon_invoice_id;
   if (needsOrder) {
     const { data: order, error: orderError } = await supabase
       .from("orders")
@@ -77,6 +91,9 @@ async function createCustomerFromForm(
         label: order_label,
         deadline,
         product_types: order_product_types,
+        sale_amount: order_sale_amount,
+        ...(order_payment_status ? { payment_status: order_payment_status } : {}),
+        reckon_invoice_id: order_reckon_invoice_id,
       })
       .select("id")
       .single();

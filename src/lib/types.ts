@@ -429,6 +429,10 @@ export interface AiDraftPayload {
     label?: string | null;
     deadline?: string | null;
     product_types?: string[];
+    sale_amount?: number | null;
+    payment_status?: PaymentStatus;
+    /** Set when this draft came from a Reckon invoice, so approval links the two records. */
+    reckon_invoice_id?: string | null;
   } | null;
   team?: {
     team_name: string;
