@@ -7,6 +7,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/meta|api/ai|api/reckon/cron).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/meta|api/ai|api/reckon/cron|api/reckon/debug-customer).*)",
   ],
 };
