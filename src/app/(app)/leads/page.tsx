@@ -7,6 +7,7 @@ import {
 } from "@/lib/types";
 import { deleteLead } from "./actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
+import { FormWithToast } from "@/components/FormWithToast";
 
 const SORT_OPTIONS = [
   { value: "newest_lead", label: "Newest lead first" },
@@ -118,14 +119,14 @@ export default async function LeadsPage({
                   {META_PLATFORM_LABELS[conversation.platform]}
                 </span>
                 {!conversation.customer_id && (
-                  <form action={deleteLeadWithId}>
+                  <FormWithToast action={deleteLeadWithId} successMessage="Lead deleted">
                     <ConfirmSubmitButton
                       confirmMessage="Delete this lead? Its chat history will be gone for good."
                       className="text-xs text-slate-400 hover:text-red-600"
                     >
                       Delete
                     </ConfirmSubmitButton>
-                  </form>
+                  </FormWithToast>
                 )}
               </div>
             </div>

@@ -14,6 +14,7 @@ import {
   uploadInvoice,
 } from "@/app/(app)/actions";
 import { FILE_INPUT_CLASS } from "@/lib/ui";
+import { FormWithToast } from "@/components/FormWithToast";
 
 export function OrderTrackingCard({
   customerId,
@@ -63,9 +64,10 @@ export function OrderTrackingCard({
         />
       </div>
 
-      <form
+      <FormWithToast
         id={formId}
         action={updateOrderTrackingWithIds}
+        successMessage="Order tracking saved"
         className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2"
       >
         <div className="sm:col-span-2">
@@ -183,14 +185,15 @@ export function OrderTrackingCard({
             Save
           </button>
         </div>
-      </form>
+      </FormWithToast>
 
       <div className="mt-4 border-t border-slate-100 pt-4">
         <label className="block text-xs font-medium text-slate-600">
           Invoice (Reckon PDF)
         </label>
-        <form
+        <FormWithToast
           action={uploadInvoiceWithIds}
+          successMessage="Invoice uploaded"
           className="mt-1 flex flex-wrap items-center gap-2"
         >
           <input
@@ -206,7 +209,7 @@ export function OrderTrackingCard({
           >
             Upload
           </button>
-        </form>
+        </FormWithToast>
         {invoiceUrl && (
           <div className="mt-2 flex items-center gap-3 text-sm">
             <a
@@ -217,14 +220,14 @@ export function OrderTrackingCard({
             >
               View current invoice
             </a>
-            <form action={deleteInvoiceWithIds}>
+            <FormWithToast action={deleteInvoiceWithIds} successMessage="Invoice deleted">
               <button
                 type="submit"
                 className="text-xs text-slate-400 hover:text-red-600"
               >
                 Delete
               </button>
-            </form>
+            </FormWithToast>
           </div>
         )}
       </div>

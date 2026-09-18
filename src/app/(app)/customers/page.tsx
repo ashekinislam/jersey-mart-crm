@@ -12,6 +12,7 @@ import {
 import { deleteCustomer, updateCustomerStatusQuick } from "../actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
+import { FormWithToast } from "@/components/FormWithToast";
 
 const STATUS_DOT_COLORS: Record<CustomerStatus, string> = {
   lead: "bg-emerald-500",
@@ -236,14 +237,17 @@ export default async function CustomersPage({
                     </option>
                   ))}
                 </AutoSubmitSelect>
-                <form action={deleteCustomerWithId}>
+                <FormWithToast
+                  action={deleteCustomerWithId}
+                  successMessage="Customer deleted"
+                >
                   <ConfirmSubmitButton
                     confirmMessage={`Delete ${customer.name}? This removes all their orders, teams, players, designs, notes, pricing, and parcels too. This can't be undone.`}
                     className="text-xs text-slate-400 hover:text-red-600"
                   >
                     Delete
                   </ConfirmSubmitButton>
-                </form>
+                </FormWithToast>
               </div>
             </div>
           );

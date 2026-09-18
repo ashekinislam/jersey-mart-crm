@@ -6,6 +6,7 @@ import { deleteTeam } from "../../../../../../actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { DesignsSection } from "@/components/DesignsSection";
 import { TeamRoster } from "@/components/TeamRoster";
+import { FormWithToast } from "@/components/FormWithToast";
 
 export default async function TeamDetailPage({
   params,
@@ -76,14 +77,14 @@ export default async function TeamDetailPage({
           >
             Build supplier order
           </Link>
-          <form action={deleteTeamWithIds}>
+          <FormWithToast action={deleteTeamWithIds} successMessage="Team deleted">
             <ConfirmSubmitButton
               confirmMessage={`Delete ${t.team_name}? This removes its roster and designs too. This can't be undone.`}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-500 hover:border-red-300 hover:text-red-600"
             >
               Delete team
             </ConfirmSubmitButton>
-          </form>
+          </FormWithToast>
         </div>
       </div>
 

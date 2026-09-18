@@ -1,5 +1,6 @@
 import { updateOrderInstructions } from "@/app/(app)/actions";
 import type { Order } from "@/lib/types";
+import { FormWithToast } from "@/components/FormWithToast";
 
 export function OrderInstructionsCard({
   customerId,
@@ -38,7 +39,11 @@ export function OrderInstructionsCard({
         pockets on shorts.
       </p>
 
-      <form action={updateInstructionsWithIds} className="mt-3 space-y-2">
+      <FormWithToast
+        action={updateInstructionsWithIds}
+        successMessage="Instructions saved"
+        className="mt-3 space-y-2"
+      >
         <textarea
           name="special_instructions"
           rows={hasInstructions ? 3 : 2}
@@ -56,7 +61,7 @@ export function OrderInstructionsCard({
         >
           Save
         </button>
-      </form>
+      </FormWithToast>
     </section>
   );
 }

@@ -24,6 +24,7 @@ import {
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { CustomerOrdersSection } from "@/components/CustomerOrdersSection";
 import { MetaChatSection } from "@/components/MetaChatSection";
+import { FormWithToast } from "@/components/FormWithToast";
 
 export default async function CustomerDetailPage({
   params,
@@ -82,21 +83,22 @@ export default async function CustomerDetailPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-slate-900">{c.name}</h1>
-        <form action={deleteCustomerWithId}>
+        <FormWithToast action={deleteCustomerWithId} successMessage="Customer deleted">
           <ConfirmSubmitButton
             confirmMessage={`Delete ${c.name}? This removes all their orders, teams, players, designs, notes, pricing, and parcels too. This can't be undone.`}
             className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-500 hover:border-red-300 hover:text-red-600"
           >
             Delete customer
           </ConfirmSubmitButton>
-        </form>
+        </FormWithToast>
       </div>
 
       {/* Follow-ups */}
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-slate-900">Follow-ups</h2>
-        <form
+        <FormWithToast
           action={addFollowUpWithId}
+          successMessage="Follow-up added"
           className="mt-3 flex flex-wrap items-end gap-2"
         >
           <div>
@@ -140,7 +142,7 @@ export default async function CustomerDetailPage({
           >
             Add
           </button>
-        </form>
+        </FormWithToast>
 
         <div className="mt-4 space-y-2">
           {followUpList.length === 0 && (
@@ -173,14 +175,14 @@ export default async function CustomerDetailPage({
                     {new Date(f.created_at).toLocaleString()}
                   </p>
                 </div>
-                <form action={deleteFollowUpWithIds}>
+                <FormWithToast action={deleteFollowUpWithIds} successMessage="Follow-up deleted">
                   <button
                     type="submit"
                     className="shrink-0 text-xs text-slate-400 hover:text-red-600"
                   >
                     Delete
                   </button>
-                </form>
+                </FormWithToast>
               </div>
             );
           })}
@@ -192,8 +194,9 @@ export default async function CustomerDetailPage({
         <summary className="cursor-pointer text-sm font-semibold text-slate-900">
           Profile
         </summary>
-        <form
+        <FormWithToast
           action={updateCustomerWithId}
+          successMessage="Profile saved"
           className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"
         >
           <div>
@@ -323,7 +326,7 @@ export default async function CustomerDetailPage({
               Save profile
             </button>
           </div>
-        </form>
+        </FormWithToast>
       </details>
 
       <CustomerOrdersSection customerId={id} />
@@ -335,8 +338,9 @@ export default async function CustomerDetailPage({
         <h2 className="text-sm font-semibold text-slate-900">
           Pricing given to this customer
         </h2>
-        <form
+        <FormWithToast
           action={addPricingWithId}
+          successMessage="Price added"
           className="mt-3 flex flex-wrap items-end gap-2"
         >
           <div>
@@ -377,7 +381,7 @@ export default async function CustomerDetailPage({
           >
             Add price
           </button>
-        </form>
+        </FormWithToast>
 
         <div className="mt-4 divide-y divide-slate-100">
           {pricingList.length === 0 && (
@@ -413,7 +417,11 @@ export default async function CustomerDetailPage({
         <h2 className="text-sm font-semibold text-slate-900">
           Conversation notes
         </h2>
-        <form action={addNoteWithId} className="mt-3 space-y-2">
+        <FormWithToast
+          action={addNoteWithId}
+          successMessage="Note added"
+          className="mt-3 space-y-2"
+        >
           <textarea
             name="body"
             required
@@ -455,7 +463,7 @@ export default async function CustomerDetailPage({
               Add note
             </button>
           </div>
-        </form>
+        </FormWithToast>
 
         <div className="mt-4 space-y-3">
           {noteList.length === 0 && (
@@ -473,14 +481,14 @@ export default async function CustomerDetailPage({
                   <p className="whitespace-pre-wrap text-sm text-slate-800">
                     {note.body}
                   </p>
-                  <form action={deleteNoteWithIds}>
+                  <FormWithToast action={deleteNoteWithIds} successMessage="Note deleted">
                     <button
                       type="submit"
                       className="shrink-0 text-xs text-slate-400 hover:text-red-600"
                     >
                       Delete
                     </button>
-                  </form>
+                  </FormWithToast>
                 </div>
                 <p className="mt-2 text-xs text-slate-400">
                   {note.source}

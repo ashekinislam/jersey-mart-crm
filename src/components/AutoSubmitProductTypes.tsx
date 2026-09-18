@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { isFrameworkNavigationError, useToast } from "./ToastProvider";
 
 export function AutoSubmitProductTypes({
   options,
@@ -17,6 +18,7 @@ export function AutoSubmitProductTypes({
 }) {
   const [selected, setSelected] = useState(new Set(defaultValues));
   const [isPending, startTransition] = useTransition();
+  const showToast = useToast();
 
   function toggle(option: string) {
     const next = new Set(selected);
@@ -27,8 +29,14 @@ export function AutoSubmitProductTypes({
     const formData = new FormData();
     for (const value of next) formData.append("product_types", value);
     formData.set("product_types_other", customTypes.join(", "));
-    startTransition(() => {
-      action(formData);
+    startTransition(async () => {
+      try {
+        await action(formData);
+        showToast("Saved");
+      } catch (err) {
+        if (isFrameworkNavigationError(err)) throw err;
+        showToast("Something went wrong -- try again", "error");
+      }
     });
   }
 

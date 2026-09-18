@@ -7,6 +7,7 @@ import {
   updatePlayer,
 } from "@/app/(app)/actions";
 import { FILE_INPUT_CLASS } from "@/lib/ui";
+import { FormWithToast } from "@/components/FormWithToast";
 
 export function TeamRoster({
   customerId,
@@ -37,7 +38,11 @@ export function TeamRoster({
       </p>
 
       <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <form action={importPlayersWithIds} className="space-y-2">
+        <FormWithToast
+          action={importPlayersWithIds}
+          successMessage="Players imported"
+          className="space-y-2"
+        >
           <label className="block text-xs font-medium text-slate-600">
             Import from Excel
           </label>
@@ -56,9 +61,13 @@ export function TeamRoster({
               Import
             </button>
           </div>
-        </form>
+        </FormWithToast>
 
-        <form action={importPlayersFromTextWithIds} className="space-y-2">
+        <FormWithToast
+          action={importPlayersFromTextWithIds}
+          successMessage="Players imported"
+          className="space-y-2"
+        >
           <label className="block text-xs font-medium text-slate-600">
             Paste supplier-format text (e.g. from ChatGPT)
           </label>
@@ -74,7 +83,7 @@ export function TeamRoster({
           >
             Import
           </button>
-        </form>
+        </FormWithToast>
       </div>
 
       {players.length > 0 && (
@@ -164,8 +173,9 @@ export function TeamRoster({
         <summary className="cursor-pointer text-xs font-medium text-slate-600">
           Add a player manually
         </summary>
-        <form
+        <FormWithToast
           action={addPlayerWithIds}
+          successMessage="Player added"
           className="mt-2 flex flex-wrap items-end gap-2"
         >
           <div>
@@ -221,7 +231,7 @@ export function TeamRoster({
           >
             Add player
           </button>
-        </form>
+        </FormWithToast>
       </details>
     </div>
   );

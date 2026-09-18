@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Header } from "@/components/Header";
 import { FollowUpBell } from "@/components/FollowUpBell";
+import { ToastProvider } from "@/components/ToastProvider";
 
 export default async function AppLayout({
   children,
@@ -21,10 +22,12 @@ export default async function AppLayout({
     .eq("status", "pending");
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Header email={user.email ?? ""} pendingAiDrafts={pendingAiDrafts ?? 0} />
-      <FollowUpBell />
-      <main className="mx-auto max-w-4xl px-4 py-6">{children}</main>
-    </div>
+    <ToastProvider>
+      <div className="min-h-screen bg-slate-50">
+        <Header email={user.email ?? ""} pendingAiDrafts={pendingAiDrafts ?? 0} />
+        <FollowUpBell />
+        <main className="mx-auto max-w-4xl px-4 py-6">{children}</main>
+      </div>
+    </ToastProvider>
   );
 }

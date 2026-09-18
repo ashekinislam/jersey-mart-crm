@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { ReckonConnection } from "@/lib/types";
 import { disconnectReckon, syncReckon, updateReckonBookId } from "./actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
+import { FormWithToast } from "@/components/FormWithToast";
 
 const AU_DATETIME_FORMAT = new Intl.DateTimeFormat("en-AU", {
   timeZone: "Australia/Brisbane",
@@ -108,19 +109,20 @@ export default async function ReckonSettingsPage({
                     Sync now
                   </button>
                 </form>
-                <form action={disconnectReckon}>
+                <FormWithToast action={disconnectReckon} successMessage="Disconnected">
                   <ConfirmSubmitButton
                     confirmMessage="Disconnect Reckon? You'll need to reconnect to resume syncing."
                     className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-500 hover:border-red-300 hover:text-red-600"
                   >
                     Disconnect
                   </ConfirmSubmitButton>
-                </form>
+                </FormWithToast>
               </div>
             </div>
 
-            <form
+            <FormWithToast
               action={updateReckonBookId}
+              successMessage="Book ID saved"
               className="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-4"
             >
               <div className="min-w-[16rem] flex-1">
@@ -144,7 +146,7 @@ export default async function ReckonSettingsPage({
               >
                 Save
               </button>
-            </form>
+            </FormWithToast>
           </div>
         ) : (
           <div className="flex items-center justify-between gap-3">

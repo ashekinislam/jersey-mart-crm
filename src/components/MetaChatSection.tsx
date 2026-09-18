@@ -10,6 +10,7 @@ import {
 import { saveMessageAsDesign, unlinkLead } from "@/app/(app)/leads/actions";
 import { ConversationThread } from "@/components/ConversationThread";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
+import { FormWithToast } from "@/components/FormWithToast";
 
 export async function MetaChatSection({ customerId }: { customerId: string }) {
   const supabase = await createClient();
@@ -86,14 +87,14 @@ export async function MetaChatSection({ customerId }: { customerId: string }) {
               >
                 {META_PLATFORM_LABELS[c.platform]}
               </span>
-              <form action={unlinkLeadWithIds}>
+              <FormWithToast action={unlinkLeadWithIds} successMessage="Conversation unlinked">
                 <ConfirmSubmitButton
                   confirmMessage="Unlink this conversation? It goes back to the Leads inbox and the chat history will no longer show on this customer."
                   className="text-slate-400 hover:text-red-600"
                 >
                   Unlink
                 </ConfirmSubmitButton>
-              </form>
+              </FormWithToast>
             </span>
           );
         })}
@@ -105,8 +106,9 @@ export async function MetaChatSection({ customerId }: { customerId: string }) {
           imageUrls={imageUrls}
           renderBelowImage={(message) =>
             teamOptions.length > 0 ? (
-              <form
+              <FormWithToast
                 action={saveMessageAsDesign.bind(null, customerId, message.id)}
+                successMessage="Saved as design"
                 className="mt-2 space-y-1 border-t border-white/20 pt-2"
               >
                 <select
@@ -134,7 +136,7 @@ export async function MetaChatSection({ customerId }: { customerId: string }) {
                 >
                   Save as design
                 </button>
-              </form>
+              </FormWithToast>
             ) : (
               <p className="mt-2 border-t border-white/20 pt-2 text-[10px] italic opacity-75">
                 Create an order + team first to save this as a design.

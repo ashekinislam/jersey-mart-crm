@@ -15,6 +15,7 @@ import type {
 import { markOrderSent } from "../../../../../actions";
 import { CopyButton } from "@/components/CopyButton";
 import { buildSupplierText } from "@/lib/supplierFormat";
+import { FormWithToast } from "@/components/FormWithToast";
 
 function designStatusLine(designs: Design[], stage: DesignStage, label: string) {
   const forStage = designs.filter((d) => d.stage === stage);
@@ -185,14 +186,14 @@ export default async function BuildOrderPage({
           </h2>
           <div className="flex gap-2">
             <CopyButton text={summary} />
-            <form action={markSent}>
+            <FormWithToast action={markSent} successMessage="Marked as sent">
               <button
                 type="submit"
                 className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
                 Mark as sent
               </button>
-            </form>
+            </FormWithToast>
           </div>
         </div>
         <pre className="mt-3 whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm text-slate-800">

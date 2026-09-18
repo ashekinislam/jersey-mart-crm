@@ -5,6 +5,7 @@ import { addTeam, deleteTeam } from "@/app/(app)/actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { TeamRoster } from "@/components/TeamRoster";
 import { DesignsSection } from "@/components/DesignsSection";
+import { FormWithToast } from "@/components/FormWithToast";
 
 /**
  * Shows an order's teams. If there's exactly one team, its roster and
@@ -68,8 +69,9 @@ export async function OrderTeamsSection({
             Team: {team.team_name}
           </h2>
           <div className="flex items-center gap-2">
-            <form
+            <FormWithToast
               action={addTeamWithIds}
+              successMessage="Team added"
               className="flex items-center gap-1.5"
             >
               <input
@@ -84,15 +86,15 @@ export async function OrderTeamsSection({
               >
                 + Add team
               </button>
-            </form>
-            <form action={deleteTeamWithIds}>
+            </FormWithToast>
+            <FormWithToast action={deleteTeamWithIds} successMessage="Team deleted">
               <ConfirmSubmitButton
                 confirmMessage={`Delete ${team.team_name}? This removes its roster and designs too.`}
                 className="text-xs text-slate-400 hover:text-red-600"
               >
                 Delete team
               </ConfirmSubmitButton>
-            </form>
+            </FormWithToast>
           </div>
         </div>
         <TeamRoster
@@ -146,7 +148,11 @@ export async function OrderTeamsSection({
         design approval tracking.
       </p>
 
-      <form action={addTeamWithIds} className="mt-3 flex flex-wrap items-end gap-2">
+      <FormWithToast
+        action={addTeamWithIds}
+        successMessage="Team added"
+        className="mt-3 flex flex-wrap items-end gap-2"
+      >
         <div className="min-w-[10rem] flex-1">
           <label className="block text-xs font-medium text-slate-600">
             Team name
@@ -164,7 +170,7 @@ export async function OrderTeamsSection({
         >
           + Add team
         </button>
-      </form>
+      </FormWithToast>
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {teamList.length === 0 && (

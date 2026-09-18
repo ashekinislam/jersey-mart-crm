@@ -1,5 +1,6 @@
 import { updateOrderProductTypes } from "@/app/(app)/actions";
 import { PRODUCT_TYPE_OPTIONS, type Order } from "@/lib/types";
+import { FormWithToast } from "@/components/FormWithToast";
 
 export function OrderProductTypesCard({
   customerId,
@@ -25,7 +26,11 @@ export function OrderProductTypesCard({
       <h2 className="text-sm font-semibold text-slate-900">
         What&rsquo;s in this order?
       </h2>
-      <form action={updateProductTypesWithIds} className="mt-3 space-y-3">
+      <FormWithToast
+        action={updateProductTypesWithIds}
+        successMessage="Saved"
+        className="mt-3 space-y-3"
+      >
         <div className="flex flex-wrap gap-3">
           {PRODUCT_TYPE_OPTIONS.map((option) => (
             <label
@@ -60,7 +65,7 @@ export function OrderProductTypesCard({
         >
           Save
         </button>
-      </form>
+      </FormWithToast>
     </section>
   );
 }

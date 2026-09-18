@@ -16,6 +16,7 @@ import {
   rejectAiDraft,
 } from "./actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
+import { FormWithToast } from "@/components/FormWithToast";
 import { playersToText } from "./helpers";
 
 const CONTACT_CHANNEL_OPTIONS = [
@@ -198,14 +199,18 @@ export default async function AiDraftsPage() {
               <NewCustomerDraftForm draft={draft} />
             )}
 
-            <form action={rejectWithId} className="mt-2">
+            <FormWithToast
+              action={rejectWithId}
+              successMessage="Draft rejected"
+              className="mt-2"
+            >
               <ConfirmSubmitButton
                 confirmMessage="Reject this draft? It won't change anything in the CRM."
                 className="text-xs text-slate-400 hover:text-red-600"
               >
                 Reject draft
               </ConfirmSubmitButton>
-            </form>
+            </FormWithToast>
           </section>
         );
       })}
@@ -233,17 +238,19 @@ function CustomerOrderForm({
   order,
   team,
   submitLabel,
+  successMessage = "Customer created",
 }: {
   action: (formData: FormData) => Promise<void>;
   customer: NonNullable<AiDraft["payload"]["customer"]>;
   order?: AiDraft["payload"]["order"];
   team?: AiDraft["payload"]["team"];
   submitLabel: string;
+  successMessage?: string;
 }) {
   const c = customer;
 
   return (
-    <form action={action} className="mt-4 space-y-4">
+    <FormWithToast action={action} successMessage={successMessage} className="mt-4 space-y-4">
       <div>
         <h3 className="text-sm font-semibold text-slate-900">Customer</h3>
         <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -465,7 +472,7 @@ function CustomerOrderForm({
           {submitLabel}
         </button>
       </div>
-    </form>
+    </FormWithToast>
   );
 }
 
@@ -483,7 +490,7 @@ function UpdateDraftForm({
   const matched = p.matched_customer_id;
 
   return (
-    <form action={approveWithId} className="mt-4 space-y-4">
+    <FormWithToast action={approveWithId} successMessage="Approved" className="mt-4 space-y-4">
       <div>
         <h3 className="text-sm font-semibold text-slate-900">Customer</h3>
         {!matched && (
@@ -775,6 +782,6 @@ function UpdateDraftForm({
           Approve & apply
         </button>
       </div>
-    </form>
+    </FormWithToast>
   );
 }

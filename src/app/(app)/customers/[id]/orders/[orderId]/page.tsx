@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Customer, Order } from "@/lib/types";
 import { deleteOrder } from "../../../../actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
+import { FormWithToast } from "@/components/FormWithToast";
 import { OrderTrackingCard } from "@/components/OrderTrackingCard";
 import { OrderCostsCard } from "@/components/OrderCostsCard";
 import { OrderInstructionsCard } from "@/components/OrderInstructionsCard";
@@ -61,14 +62,14 @@ export default async function OrderDetailPage({
           >
             Build supplier order
           </Link>
-          <form action={deleteOrderWithIds}>
+          <FormWithToast action={deleteOrderWithIds} successMessage="Order deleted">
             <ConfirmSubmitButton
               confirmMessage="Delete this order? This removes all its teams, players, designs, and history. This can't be undone."
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-500 hover:border-red-300 hover:text-red-600"
             >
               Delete order
             </ConfirmSubmitButton>
-          </form>
+          </FormWithToast>
         </div>
       </div>
 

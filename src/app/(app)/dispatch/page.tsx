@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Customer, Parcel } from "@/lib/types";
 import { addParcel, deleteParcel, markParcelsDispatched } from "../actions";
 import { CopyButton } from "@/components/CopyButton";
+import { FormWithToast } from "@/components/FormWithToast";
 
 type ParcelWithCustomer = Parcel & {
   customers: Pick<Customer, "name" | "address" | "phone"> | null;
@@ -55,7 +56,11 @@ export default async function DispatchPage() {
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-slate-900">Add a parcel</h2>
-        <form action={addParcel} className="mt-3 flex flex-wrap items-end gap-2">
+        <FormWithToast
+          action={addParcel}
+          successMessage="Parcel added"
+          className="mt-3 flex flex-wrap items-end gap-2"
+        >
           <div className="min-w-[10rem]">
             <label className="block text-xs font-medium text-slate-600">
               Customer
@@ -90,7 +95,7 @@ export default async function DispatchPage() {
           >
             Add parcel
           </button>
-        </form>
+        </FormWithToast>
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
@@ -101,14 +106,17 @@ export default async function DispatchPage() {
           {pendingParcels.length > 0 && (
             <div className="flex gap-2">
               <CopyButton text={parcelText} />
-              <form action={markParcelsDispatched}>
+              <FormWithToast
+                action={markParcelsDispatched}
+                successMessage="Batch marked dispatched"
+              >
                 <button
                   type="submit"
                   className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 >
                   Mark batch dispatched
                 </button>
-              </form>
+              </FormWithToast>
             </div>
           )}
         </div>
@@ -133,14 +141,14 @@ export default async function DispatchPage() {
                       </p>
                       <p className="text-slate-600">{p.contents}</p>
                     </div>
-                    <form action={deleteParcelWithId}>
+                    <FormWithToast action={deleteParcelWithId} successMessage="Parcel deleted">
                       <button
                         type="submit"
                         className="shrink-0 text-xs text-slate-400 hover:text-red-600"
                       >
                         Delete
                       </button>
-                    </form>
+                    </FormWithToast>
                   </div>
                 );
               })}

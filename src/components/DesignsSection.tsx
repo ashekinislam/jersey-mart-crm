@@ -10,6 +10,7 @@ import {
   uploadDesign,
 } from "@/app/(app)/actions";
 import { FILE_INPUT_CLASS } from "@/lib/ui";
+import { FormWithToast } from "@/components/FormWithToast";
 
 function DesignCard({
   design,
@@ -71,7 +72,11 @@ function DesignCard({
         </span>
       </div>
 
-      <form action={updateStatusWithIds} className="mt-2 space-y-1.5">
+      <FormWithToast
+        action={updateStatusWithIds}
+        successMessage="Design updated"
+        className="mt-2 space-y-1.5"
+      >
         <select
           name="status"
           defaultValue={design.status}
@@ -95,15 +100,15 @@ function DesignCard({
             Save
           </button>
         </div>
-      </form>
-      <form action={deleteDesignWithIds} className="mt-1">
+      </FormWithToast>
+      <FormWithToast action={deleteDesignWithIds} successMessage="Design deleted" className="mt-1">
         <button
           type="submit"
           className="text-xs text-slate-400 hover:text-red-600"
         >
           Delete
         </button>
-      </form>
+      </FormWithToast>
     </div>
   );
 }
@@ -130,7 +135,11 @@ function StagePanel({
   return (
     <div>
       <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-      <form action={uploadWithIds} className="mt-2 space-y-2">
+      <FormWithToast
+        action={uploadWithIds}
+        successMessage="Design uploaded"
+        className="mt-2 space-y-2"
+      >
         <input type="hidden" name="stage" value={stage} />
         <input
           type="file"
@@ -150,7 +159,7 @@ function StagePanel({
         >
           Upload
         </button>
-      </form>
+      </FormWithToast>
 
       <div className="mt-3 grid grid-cols-2 gap-3">
         {designs.length === 0 && (

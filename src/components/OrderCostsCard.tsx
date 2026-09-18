@@ -1,5 +1,6 @@
 import { updateOrderCosts } from "@/app/(app)/actions";
 import type { Order } from "@/lib/types";
+import { FormWithToast } from "@/components/FormWithToast";
 
 function fmt(n: number) {
   return n.toLocaleString("en-AU", { style: "currency", currency: "AUD" });
@@ -40,8 +41,9 @@ export function OrderCostsCard({
         Track what this order actually cost to fulfil, mirroring your ledger.
       </p>
 
-      <form
+      <FormWithToast
         action={updateOrderCostsWithIds}
+        successMessage="Costs saved"
         className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3"
       >
         <div>
@@ -91,7 +93,7 @@ export function OrderCostsCard({
             Save
           </button>
         </div>
-      </form>
+      </FormWithToast>
 
       {hasCosts && (
         <div className="mt-4 grid grid-cols-1 gap-2 border-t border-slate-100 pt-4 sm:grid-cols-3">

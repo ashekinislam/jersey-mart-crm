@@ -166,7 +166,6 @@ export async function createCustomerManually(formData: FormData) {
   revalidatePath("/customers");
   revalidatePath("/orders");
   revalidatePath("/");
-  redirect(`/customers/${customerId}`);
 }
 
 export async function approveUpdateDraft(draftId: string, formData: FormData) {

@@ -15,6 +15,7 @@ import { OrderInstructionsCard } from "@/components/OrderInstructionsCard";
 import { OrderProductTypesCard } from "@/components/OrderProductTypesCard";
 import { ProductTypePills } from "@/components/ProductTypePills";
 import { OrderTeamsSection } from "@/components/OrderTeamsSection";
+import { FormWithToast } from "@/components/FormWithToast";
 
 /**
  * Most customers only ever have one order, so when that's the case its
@@ -63,22 +64,22 @@ export async function CustomerOrdersSection({
             >
               Build supplier order
             </Link>
-            <form action={addOrderWithId}>
+            <FormWithToast action={addOrderWithId} successMessage="Order created">
               <button
                 type="submit"
                 className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
                 + New order
               </button>
-            </form>
-            <form action={deleteOrderWithIds}>
+            </FormWithToast>
+            <FormWithToast action={deleteOrderWithIds} successMessage="Order deleted">
               <ConfirmSubmitButton
                 confirmMessage="Delete this order? This removes all its teams, players, designs, and history. This can't be undone."
                 className="text-xs text-slate-400 hover:text-red-600"
               >
                 Delete order
               </ConfirmSubmitButton>
-            </form>
+            </FormWithToast>
           </div>
         </div>
         <OrderInstructionsCard
@@ -106,8 +107,9 @@ export async function CustomerOrdersSection({
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4">
       <h2 className="text-sm font-semibold text-slate-900">Orders</h2>
-      <form
+      <FormWithToast
         action={addOrderWithId}
+        successMessage="Order created"
         className="mt-3 flex flex-wrap items-end gap-2"
       >
         <div className="min-w-[12rem] flex-1">
@@ -126,7 +128,7 @@ export async function CustomerOrdersSection({
         >
           + New order
         </button>
-      </form>
+      </FormWithToast>
 
       <div className="mt-4 divide-y divide-slate-100">
         {orderList.length === 0 && (
