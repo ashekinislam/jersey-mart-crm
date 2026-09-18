@@ -161,20 +161,34 @@ export async function runReckonSync(
     return { ok: false, error: "token_failed", updated: 0, linked: 0, drafted: 0 };
   }
 
-  const result = await reckonApiGet(accessToken, connection.book_id, "/invoices");
-  if (!result.ok) {
-    return {
-      ok: false,
-      error: "fetch_failed",
-      detail: { status: result.status, body: result.body },
-      updated: 0,
-      linked: 0,
-      drafted: 0,
-    };
-  }
+  // The Reckon API defaults to page=1/perpage=10 when unpaginated -- fetching
+  // just "/invoices" silently truncates to the first 10 invoices by their
+  // default order, so anything beyond that (including newly created ones)
+  // never gets seen. Page through everything explicitly instead.
+  const perPage = 100;
+  const invoices: ReckonInvoice[] = [];
+  for (let page = 1; page <= 50; page++) {
+    const result = await reckonApiGet(
+      accessToken,
+      connection.book_id,
+      `/invoices?page=${page}&perpage=${perPage}`
+    );
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: "fetch_failed",
+        detail: { status: result.status, body: result.body },
+        updated: 0,
+        linked: 0,
+        drafted: 0,
+      };
+    }
 
-  const invoices = ((result.body as { list?: ReckonInvoice[] })?.list ??
-    []) as ReckonInvoice[];
+    const pageInvoices = ((result.body as { list?: ReckonInvoice[] })?.list ??
+      []) as ReckonInvoice[];
+    invoices.push(...pageInvoices);
+    if (pageInvoices.length < perPage) break;
+  }
 
   const { data: existingOrders } = await supabase
     .from("orders")
@@ -276,6 +290,11 @@ export async function runReckonSync(
     });
     drafted++;
   }
+
+  await supabase
+    .from("reckon_connections")
+    .update({ last_synced_at: new Date().toISOString() })
+    .eq("owner_id", ownerId);
 
   return { ok: true, updated, linked, drafted };
 }

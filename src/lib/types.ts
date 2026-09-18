@@ -488,6 +488,7 @@ export interface ReckonConnection {
   refresh_token: string;
   expires_at: string;
   book_id: string | null;
+  last_synced_at: string | null;
   created_at: string;
   updated_at: string;
 }

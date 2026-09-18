@@ -315,6 +315,7 @@ create table if not exists reckon_connections (
   refresh_token text not null,
   expires_at timestamptz not null,
   book_id text,
+  last_synced_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

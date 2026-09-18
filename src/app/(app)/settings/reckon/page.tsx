@@ -3,6 +3,12 @@ import type { ReckonConnection } from "@/lib/types";
 import { disconnectReckon, syncReckon, updateReckonBookId } from "./actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 
+const AU_DATETIME_FORMAT = new Intl.DateTimeFormat("en-AU", {
+  timeZone: "Australia/Brisbane",
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
 const ERROR_MESSAGES: Record<string, string> = {
   not_configured:
     "The Reckon integration isn't fully set up yet (missing API credentials on the server).",
@@ -84,7 +90,13 @@ export default async function ReckonSettingsPage({
                   Reckon is connected
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Connected {new Date(connection.created_at).toLocaleString()}
+                  Connected {AU_DATETIME_FORMAT.format(new Date(connection.created_at))}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Last synced{" "}
+                  {connection.last_synced_at
+                    ? `${AU_DATETIME_FORMAT.format(new Date(connection.last_synced_at))} (AEST)`
+                    : "never"}
                 </p>
               </div>
               <div className="flex items-center gap-2">
