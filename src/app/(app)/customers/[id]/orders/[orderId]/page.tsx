@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { loadOrderCosts } from "@/lib/costs";
 import type { Customer, Order } from "@/lib/types";
 import { deleteOrder } from "../../../../actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
@@ -39,6 +40,7 @@ export default async function OrderDetailPage({
   }
 
   const deleteOrderWithIds = deleteOrder.bind(null, id, orderId);
+  const costsByOrder = await loadOrderCosts(supabase, [orderId]);
 
   return (
     <div className="space-y-6">
@@ -81,7 +83,12 @@ export default async function OrderDetailPage({
         order={o}
         invoiceUrl={invoiceUrl}
       />
-      <OrderCostsCard customerId={id} orderId={orderId} order={o} />
+      <OrderCostsCard
+        customerId={id}
+        orderId={orderId}
+        order={o}
+        costs={costsByOrder.get(orderId)}
+      />
       <OrderTeamsSection customerId={id} orderId={orderId} />
     </div>
   );

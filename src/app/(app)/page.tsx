@@ -25,6 +25,8 @@ import { BreakdownCard } from "@/components/StatBreakdown";
 import { ProductTypePills } from "@/components/ProductTypePills";
 import { OrderMoney } from "@/components/OrderMoney";
 import { moneyFields } from "@/lib/orderMoney";
+import { loadOrderCosts } from "@/lib/costs";
+import { OrderCostLine } from "@/components/OrderCostLine";
 import { ReckonSyncStatus } from "@/components/ReckonSyncStatus";
 
 export default async function DashboardPage() {
@@ -36,6 +38,7 @@ export default async function DashboardPage() {
     .order("order_date", { ascending: false });
 
   const orderList = (orders ?? []) as Order[];
+  const costsByOrder = await loadOrderCosts(supabase);
 
   const ongoingOrders = orderList.filter(
     (o) => o.order_status !== "delivered" && o.order_status !== "cancelled"
@@ -159,6 +162,10 @@ export default async function DashboardPage() {
                       </p>
                     )}
                     <ProductTypePills types={order.product_types} />
+                    <OrderCostLine
+                      order={order}
+                      costs={costsByOrder.get(order.id)}
+                    />
                   </Link>
                   <OrderMoney
                     order={moneyFields(order)}

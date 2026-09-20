@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { brisbaneToday, recordOrderCost } from "@/lib/costs";
 import { parseSupplierText } from "@/lib/supplierFormat";
 import type {
   ContactChannel,
@@ -222,8 +223,6 @@ export async function approveUpdateDraft(draftId: string, formData: FormData) {
         label: String(formData.get("new_order_label") ?? "").trim() || null,
         deadline: String(formData.get("new_order_deadline") ?? "").trim() || null,
         sale_amount: parseAmount("new_order_sale_amount"),
-        supplier_cost: parseAmount("new_order_supplier_cost"),
-        freight_cost: parseAmount("new_order_freight_cost"),
         ...(payment_status ? { payment_status } : {}),
         reckon_invoice_id,
         special_instructions: new_order_special_instructions,
@@ -234,6 +233,24 @@ export async function approveUpdateDraft(draftId: string, formData: FormData) {
 
     if (!orderError && order) {
       new_order_id = order.id;
+
+      // Supplier/freight costs known at approval time go into the costs ledger
+      // (not paid yet -- the owner ticks them off on the Costs page).
+      for (const [kind, amount, payee] of [
+        ["supplier", parseAmount("new_order_supplier_cost"), "Supplier"],
+        ["shipping", parseAmount("new_order_freight_cost"), "Freight"],
+      ] as const) {
+        if (amount != null && amount > 0) {
+          await recordOrderCost(supabase, {
+            ownerId: user.id,
+            orderId: order.id,
+            kind,
+            amount,
+            date: brisbaneToday(),
+            payee,
+          });
+        }
+      }
       const new_order_team_name = String(formData.get("new_order_team_name") ?? "").trim();
       if (new_order_team_name) {
         const { data: team, error: teamError } = await supabase

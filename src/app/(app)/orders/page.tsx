@@ -31,6 +31,8 @@ import { AutoSubmitProductTypes } from "@/components/AutoSubmitProductTypes";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { OrderMoney } from "@/components/OrderMoney";
 import { moneyFields } from "@/lib/orderMoney";
+import { loadOrderCosts } from "@/lib/costs";
+import { OrderCostLine } from "@/components/OrderCostLine";
 import { ReckonSyncStatus } from "@/components/ReckonSyncStatus";
 
 const RECENCY_OPTIONS = [
@@ -70,6 +72,7 @@ export default async function OrdersPage({
 
   const { data: orders } = await query;
   const orderList = (orders ?? []) as Order[];
+  const costsByOrder = await loadOrderCosts(supabase);
 
   const { data: allCustomers } = await supabase
     .from("customers")
@@ -248,6 +251,10 @@ export default async function OrdersPage({
                           </p>
                         )}
                       </Link>
+                      <OrderCostLine
+                        order={order}
+                        costs={costsByOrder.get(order.id)}
+                      />
                       <div className="mt-1 flex items-center gap-1.5">
                         <span className="text-xs text-slate-400">Ordered</span>
                         <AutoSubmitInput

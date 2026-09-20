@@ -504,3 +504,44 @@ export interface ReckonConnection {
   created_at: string;
   updated_at: string;
 }
+
+// ---- Costs ledger ------------------------------------------------------------
+
+export type ExpenseKind = "supplier" | "shipping" | "ads" | "other";
+
+export const EXPENSE_KIND_LABELS: Record<ExpenseKind, string> = {
+  supplier: "Supplier bill",
+  shipping: "Shipping invoice",
+  ads: "Facebook ads",
+  other: "Other expense",
+};
+
+export const EXPENSE_KIND_COLORS: Record<ExpenseKind, string> = {
+  supplier: "bg-indigo-100 text-indigo-800",
+  shipping: "bg-sky-100 text-sky-800",
+  ads: "bg-fuchsia-100 text-fuchsia-800",
+  other: "bg-slate-100 text-slate-700",
+};
+
+export interface Expense {
+  id: string;
+  owner_id: string;
+  kind: ExpenseKind;
+  expense_date: string;
+  amount: number;
+  payee: string | null;
+  reference: string | null;
+  notes: string | null;
+  /** null = bill received but not paid yet */
+  paid_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExpenseAllocation {
+  id: string;
+  owner_id: string;
+  expense_id: string;
+  order_id: string;
+  amount: number;
+}

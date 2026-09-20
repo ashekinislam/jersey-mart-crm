@@ -28,6 +28,12 @@ export function Header({
             Orders
           </Link>
           <Link
+            href="/costs"
+            className="text-sm text-slate-600 hover:text-slate-900"
+          >
+            Costs
+          </Link>
+          <Link
             href="/leads"
             className="text-sm text-slate-600 hover:text-slate-900"
           >

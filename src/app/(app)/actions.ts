@@ -492,37 +492,6 @@ export async function resetOrderMoney(customerId: string, orderId: string) {
   revalidateOrderMoney(customerId, orderId);
 }
 
-export async function updateOrderCosts(
-  customerId: string,
-  orderId: string,
-  formData: FormData
-) {
-  const parseAmount = (key: string) => {
-    const raw = String(formData.get(key) ?? "").trim();
-    if (!raw) return null;
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : null;
-  };
-
-  const sale_amount = parseAmount("sale_amount");
-  const supplier_cost = parseAmount("supplier_cost");
-  const freight_cost = parseAmount("freight_cost");
-
-  const supabase = await createClient();
-  await supabase
-    .from("orders")
-    .update({
-      sale_amount,
-      supplier_cost,
-      freight_cost,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", orderId);
-
-  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
-  revalidatePath(`/customers/${customerId}`);
-}
-
 export async function updateOrderInstructions(
   customerId: string,
   orderId: string,

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { loadOrderCosts } from "@/lib/costs";
 import {
   ORDER_TRACKING_COLORS,
   ORDER_TRACKING_LABELS,
@@ -47,6 +48,7 @@ export async function CustomerOrdersSection({
       invoiceUrl = signed?.signedUrl ?? null;
     }
     const deleteOrderWithIds = deleteOrder.bind(null, customerId, order.id);
+    const costsByOrder = await loadOrderCosts(supabase, [order.id]);
 
     return (
       <div className="space-y-6">
@@ -98,7 +100,12 @@ export async function CustomerOrdersSection({
           order={order}
           invoiceUrl={invoiceUrl}
         />
-        <OrderCostsCard customerId={customerId} orderId={order.id} order={order} />
+        <OrderCostsCard
+          customerId={customerId}
+          orderId={order.id}
+          order={order}
+          costs={costsByOrder.get(order.id)}
+        />
         <OrderTeamsSection customerId={customerId} orderId={order.id} />
       </div>
     );
