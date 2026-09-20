@@ -21,6 +21,8 @@ import {
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 import { BreakdownCard } from "@/components/StatBreakdown";
 import { ProductTypePills } from "@/components/ProductTypePills";
+import { OrderMoney } from "@/components/OrderMoney";
+import { ReckonSyncStatus } from "@/components/ReckonSyncStatus";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -93,6 +95,10 @@ export default async function DashboardPage() {
           </Link>
         </div>
 
+        <div className="mt-1">
+          <ReckonSyncStatus />
+        </div>
+
         {ongoingOrders.length === 0 ? (
           <p className="mt-3 text-sm text-slate-500">
             No open orders right now.
@@ -141,6 +147,7 @@ export default async function DashboardPage() {
                     )}
                     <ProductTypePills types={order.product_types} />
                   </Link>
+                  <OrderMoney order={order} />
                   <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
                     <AutoSubmitSelect
                       name="payment_status"

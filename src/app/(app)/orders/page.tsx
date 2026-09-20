@@ -27,6 +27,8 @@ import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 import { AutoSubmitInput } from "@/components/AutoSubmitInput";
 import { AutoSubmitProductTypes } from "@/components/AutoSubmitProductTypes";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
+import { OrderMoney } from "@/components/OrderMoney";
+import { ReckonSyncStatus } from "@/components/ReckonSyncStatus";
 
 const RECENCY_OPTIONS = [
   { value: "all", label: "All time" },
@@ -93,6 +95,9 @@ export default async function OrdersPage({
       <p className="mt-1 text-sm text-slate-500">
         Every order across all customers, grouped by the month it was placed.
       </p>
+      <div className="mt-1">
+        <ReckonSyncStatus />
+      </div>
 
       <section className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-slate-900">New order</h2>
@@ -248,6 +253,7 @@ export default async function OrdersPage({
                         />
                       </div>
                     </div>
+                    <OrderMoney order={order} />
                     <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
                       <AutoSubmitSelect
                         name="payment_status"

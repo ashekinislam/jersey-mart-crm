@@ -80,6 +80,10 @@ export interface Order {
   supplier_cost: number | null;
   freight_cost: number | null;
   reckon_invoice_id: string | null;
+  /** Grand total of the linked Reckon invoice, as of the last sync. */
+  reckon_total: number | null;
+  /** Amount still owing on the linked Reckon invoice, as of the last sync. */
+  reckon_balance: number | null;
   special_instructions: string | null;
   product_types: string[];
   created_at: string;

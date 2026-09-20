@@ -43,6 +43,34 @@ export async function syncReckon() {
   );
 }
 
+/** Same sync as syncReckon, but stays on the current page (Orders/dashboard)
+ * and reports back to the caller instead of redirecting to the settings page. */
+export async function syncReckonInPlace(): Promise<{
+  ok: boolean;
+  error?: string;
+  updated: number;
+  drafted: number;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const summary = await runReckonSync(supabase, user.id);
+
+  revalidatePath("/orders");
+  revalidatePath("/ai-drafts");
+  revalidatePath("/");
+
+  return {
+    ok: summary.ok,
+    error: summary.error,
+    updated: summary.updated,
+    drafted: summary.drafted,
+  };
+}
+
 export async function disconnectReckon() {
   const supabase = await createClient();
   const {

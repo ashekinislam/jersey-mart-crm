@@ -92,6 +92,15 @@ export function mapReckonInvoiceToPaymentStatus(
   return invoice.emailStatus === "Sent" ? "invoice_sent" : "unpaid";
 }
 
+function roundToCents(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/** Compares a stored amount (null before the first sync) to a fresh one, ignoring float noise. */
+function sameAmount(stored: number | null, fresh: number): boolean {
+  return stored != null && Math.abs(stored - fresh) < 0.005;
+}
+
 async function refreshAccessToken(
   supabase: SupabaseClient,
   connection: ReckonConnection
@@ -251,15 +260,19 @@ export async function runReckonSync(
 
   const { data: existingOrders } = await supabase
     .from("orders")
-    .select("id, label, payment_status, reckon_invoice_id")
+    .select(
+      "id, label, payment_status, reckon_invoice_id, reckon_total, reckon_balance"
+    )
     .eq("owner_id", ownerId);
 
-  const byInvoiceId = new Map<string, Pick<Order, "id" | "payment_status">>();
-  const unlinkedOrders: Pick<Order, "id" | "label">[] = [];
-  for (const o of (existingOrders ?? []) as Pick<
+  type SyncedOrder = Pick<
     Order,
-    "id" | "label" | "payment_status" | "reckon_invoice_id"
-  >[]) {
+    "id" | "payment_status" | "reckon_total" | "reckon_balance"
+  >;
+  const byInvoiceId = new Map<string, SyncedOrder>();
+  const unlinkedOrders: Pick<Order, "id" | "label">[] = [];
+  for (const o of (existingOrders ?? []) as (SyncedOrder &
+    Pick<Order, "label" | "reckon_invoice_id">)[]) {
     if (o.reckon_invoice_id) {
       byInvoiceId.set(o.reckon_invoice_id, o);
     } else {
@@ -285,12 +298,24 @@ export async function runReckonSync(
   for (const invoice of invoices) {
     const newStatus = mapReckonInvoiceToPaymentStatus(invoice);
 
+    const grandTotal = roundToCents(reckonInvoiceGrandTotal(invoice));
+    const balance = roundToCents(invoice.balance);
+
     const linkedOrder = byInvoiceId.get(invoice.id);
     if (linkedOrder) {
-      if (linkedOrder.payment_status !== newStatus) {
+      if (
+        linkedOrder.payment_status !== newStatus ||
+        !sameAmount(linkedOrder.reckon_total, grandTotal) ||
+        !sameAmount(linkedOrder.reckon_balance, balance)
+      ) {
         await supabase
           .from("orders")
-          .update({ payment_status: newStatus, updated_at: new Date().toISOString() })
+          .update({
+            payment_status: newStatus,
+            reckon_total: grandTotal,
+            reckon_balance: balance,
+            updated_at: new Date().toISOString(),
+          })
           .eq("id", linkedOrder.id);
         updated++;
       }
@@ -309,6 +334,8 @@ export async function runReckonSync(
         .update({
           reckon_invoice_id: invoice.id,
           payment_status: newStatus,
+          reckon_total: grandTotal,
+          reckon_balance: balance,
           updated_at: new Date().toISOString(),
         })
         .eq("id", backfillMatch.id);
