@@ -14,6 +14,8 @@ import {
   type Order,
 } from "@/lib/types";
 import {
+  resetOrderMoney,
+  updateOrderMoney,
   updateOrderStatusQuick,
   updatePaymentStatusQuick,
   updateShippingStatusQuick,
@@ -22,6 +24,7 @@ import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 import { BreakdownCard } from "@/components/StatBreakdown";
 import { ProductTypePills } from "@/components/ProductTypePills";
 import { OrderMoney } from "@/components/OrderMoney";
+import { moneyFields } from "@/lib/orderMoney";
 import { ReckonSyncStatus } from "@/components/ReckonSyncStatus";
 
 export default async function DashboardPage() {
@@ -123,6 +126,16 @@ export default async function DashboardPage() {
                   order.customer_id,
                   order.id
                 );
+              const updateMoneyWithIds = updateOrderMoney.bind(
+                null,
+                order.customer_id,
+                order.id
+              );
+              const resetMoneyWithIds = resetOrderMoney.bind(
+                null,
+                order.customer_id,
+                order.id
+              );
 
               return (
                 <div
@@ -147,7 +160,11 @@ export default async function DashboardPage() {
                     )}
                     <ProductTypePills types={order.product_types} />
                   </Link>
-                  <OrderMoney order={order} />
+                  <OrderMoney
+                    order={moneyFields(order)}
+                    saveAction={updateMoneyWithIds}
+                    resetAction={resetMoneyWithIds}
+                  />
                   <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
                     <AutoSubmitSelect
                       name="payment_status"

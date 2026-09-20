@@ -84,6 +84,10 @@ export interface Order {
   reckon_total: number | null;
   /** Amount still owing on the linked Reckon invoice, as of the last sync. */
   reckon_balance: number | null;
+  /** Total the owner typed in on the Orders page; wins over Reckon when set. */
+  manual_total: number | null;
+  /** Amount paid the owner typed in on the Orders page; wins over Reckon when set. */
+  manual_paid: number | null;
   special_instructions: string | null;
   product_types: string[];
   created_at: string;

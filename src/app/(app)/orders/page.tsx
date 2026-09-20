@@ -17,7 +17,9 @@ import {
 import {
   addOrderFromList,
   deleteOrderFromList,
+  resetOrderMoney,
   updateOrderDateQuick,
+  updateOrderMoney,
   updateOrderProductTypes,
   updateOrderStatusQuick,
   updatePaymentStatusQuick,
@@ -28,6 +30,7 @@ import { AutoSubmitInput } from "@/components/AutoSubmitInput";
 import { AutoSubmitProductTypes } from "@/components/AutoSubmitProductTypes";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { OrderMoney } from "@/components/OrderMoney";
+import { moneyFields } from "@/lib/orderMoney";
 import { ReckonSyncStatus } from "@/components/ReckonSyncStatus";
 
 const RECENCY_OPTIONS = [
@@ -210,6 +213,16 @@ export default async function OrdersPage({
                   order.customer_id,
                   order.id
                 );
+                const updateMoneyWithIds = updateOrderMoney.bind(
+                  null,
+                  order.customer_id,
+                  order.id
+                );
+                const resetMoneyWithIds = resetOrderMoney.bind(
+                  null,
+                  order.customer_id,
+                  order.id
+                );
                 const customProductTypes = order.product_types.filter(
                   (t) => !PRODUCT_TYPE_OPTIONS.includes(t)
                 );
@@ -253,7 +266,11 @@ export default async function OrdersPage({
                         />
                       </div>
                     </div>
-                    <OrderMoney order={order} />
+                    <OrderMoney
+                      order={moneyFields(order)}
+                      saveAction={updateMoneyWithIds}
+                      resetAction={resetMoneyWithIds}
+                    />
                     <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
                       <AutoSubmitSelect
                         name="payment_status"

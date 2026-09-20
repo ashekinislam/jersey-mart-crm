@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { parseSupplierText } from "@/lib/supplierFormat";
+import { resolveManualAmounts, type OrderMoneyFields } from "@/lib/orderMoney";
 import { CUSTOMER_STATUSES } from "@/lib/types";
 import type {
   ContactChannel,
@@ -422,6 +423,73 @@ export async function updateOrderDateQuick(
   revalidatePath(`/customers/${customerId}`);
   revalidatePath(`/customers/${customerId}/orders/${orderId}`);
   revalidatePath("/");
+}
+
+const ORDER_MONEY_COLUMNS =
+  "reckon_total, reckon_balance, sale_amount, payment_status, manual_total, manual_paid";
+
+function revalidateOrderMoney(customerId: string, orderId: string) {
+  revalidatePath("/");
+  revalidatePath("/orders");
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
+}
+
+/** A blank box means "no edit"; anything else must be a non-negative dollar amount. */
+function parseMoneyInput(formData: FormData, key: string): number | null {
+  const raw = String(formData.get(key) ?? "").trim().replace(/^\$/, "").replace(/,/g, "");
+  if (!raw) return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) throw new Error(`Invalid ${key} amount`);
+  return n;
+}
+
+/** Saves the total / paid the owner typed on an order row. Only figures that differ
+ * from what Reckon (or the CRM) already shows are stored -- see resolveManualAmounts. */
+export async function updateOrderMoney(
+  customerId: string,
+  orderId: string,
+  formData: FormData
+) {
+  const input = {
+    total: parseMoneyInput(formData, "total"),
+    paid: parseMoneyInput(formData, "paid"),
+  };
+
+  const supabase = await createClient();
+  const { data: order, error: readError } = await supabase
+    .from("orders")
+    .select(ORDER_MONEY_COLUMNS)
+    .eq("id", orderId)
+    .single();
+  if (readError || !order) throw new Error("Couldn't load the order");
+
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      ...resolveManualAmounts(order as OrderMoneyFields, input),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", orderId);
+  if (error) throw new Error("Couldn't save the amounts");
+
+  revalidateOrderMoney(customerId, orderId);
+}
+
+/** Drops the owner's edits so the order goes back to the Reckon / CRM figures. */
+export async function resetOrderMoney(customerId: string, orderId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      manual_total: null,
+      manual_paid: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", orderId);
+  if (error) throw new Error("Couldn't reset the amounts");
+
+  revalidateOrderMoney(customerId, orderId);
 }
 
 export async function updateOrderCosts(
