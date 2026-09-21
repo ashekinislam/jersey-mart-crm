@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import crypto from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { MetaPlatform } from "@/lib/types";
+import { metaChatsEnabled } from "@/lib/features";
 
 const OWNER_ID = process.env.META_OWNER_USER_ID!;
 const GRAPH_API_VERSION = "v21.0";
@@ -56,6 +57,10 @@ function verifySignature(rawBody: string, signatureHeader: string | null) {
 }
 
 export async function POST(request: NextRequest) {
+  // Chat copying is switched off: acknowledge so Meta doesn't retry (or disable this
+  // webhook), but store nothing. The verification GET above still works.
+  if (!metaChatsEnabled()) return NextResponse.json({ status: "IGNORED" });
+
   const rawBody = await request.text();
   if (!verifySignature(rawBody, request.headers.get("x-hub-signature-256"))) {
     return new NextResponse("Invalid signature", { status: 401 });

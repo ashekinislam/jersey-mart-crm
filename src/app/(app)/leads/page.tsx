@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { metaChatsEnabled } from "@/lib/features";
 import { createClient } from "@/lib/supabase/server";
 import {
   META_PLATFORM_COLORS,
@@ -20,6 +22,8 @@ export default async function LeadsPage({
 }: {
   searchParams: Promise<{ filter?: string; sort?: string }>;
 }) {
+  if (!metaChatsEnabled()) redirect("/");
+
   const { filter = "unconverted", sort = "newest_lead" } = await searchParams;
 
   const supabase = await createClient();

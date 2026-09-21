@@ -24,6 +24,7 @@ import {
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { CustomerOrdersSection } from "@/components/CustomerOrdersSection";
 import { MetaChatSection } from "@/components/MetaChatSection";
+import { metaChatsEnabled } from "@/lib/features";
 import { FormWithToast } from "@/components/FormWithToast";
 
 export default async function CustomerDetailPage({
@@ -331,7 +332,7 @@ export default async function CustomerDetailPage({
 
       <CustomerOrdersSection customerId={id} />
 
-      <MetaChatSection customerId={id} />
+      {metaChatsEnabled() && <MetaChatSection customerId={id} />}
 
       {/* Pricing */}
       <section className="rounded-lg border border-slate-200 bg-white p-4">

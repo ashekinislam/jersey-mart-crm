@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signOut } from "@/app/(app)/actions";
+import { metaChatsEnabled } from "@/lib/features";
 
 export function Header({
   email,
@@ -33,12 +34,14 @@ export function Header({
           >
             Costs
           </Link>
-          <Link
-            href="/leads"
-            className="text-sm text-slate-600 hover:text-slate-900"
-          >
-            Leads
-          </Link>
+          {metaChatsEnabled() && (
+            <Link
+              href="/leads"
+              className="text-sm text-slate-600 hover:text-slate-900"
+            >
+              Leads
+            </Link>
+          )}
           <Link
             href="/dispatch"
             className="text-sm text-slate-600 hover:text-slate-900"

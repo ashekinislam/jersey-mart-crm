@@ -10,12 +10,15 @@ import {
 } from "@/lib/types";
 import { convertLead, linkLeadToCustomer } from "../actions";
 import { ConversationThread } from "@/components/ConversationThread";
+import { metaChatsEnabled } from "@/lib/features";
 
 export default async function LeadDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  if (!metaChatsEnabled()) redirect("/");
+
   const { id } = await params;
   const supabase = await createClient();
 
