@@ -5,8 +5,13 @@ import {
   buildCostsByOrder,
   cents,
   inMonth,
-  summariseMonth,
+  monthBreakdown,
+  monthLabel,
+  periodPresets,
+  resolvePeriod,
+  summarisePeriod,
   unassignedTotal,
+  type PeriodKind,
 } from "@/lib/costs";
 import { getOrderMoney, moneyFields } from "@/lib/orderMoney";
 import type { Customer, Expense, ExpenseAllocation, Order } from "@/lib/types";
@@ -14,7 +19,9 @@ import { AdSpendQuickAdd } from "@/components/AdSpendQuickAdd";
 import { AdSpendList } from "@/components/AdSpendList";
 import { BillForm, type BillKind, type OrderOption } from "@/components/BillForm";
 import { BillsList, type BillRow } from "@/components/BillsList";
-import { CostsMonthSummary } from "@/components/CostsMonthSummary";
+import { CostsPeriodSummary } from "@/components/CostsPeriodSummary";
+import { CostsByMonthTable } from "@/components/CostsByMonthTable";
+import { CostsPeriodPicker } from "@/components/CostsPeriodPicker";
 
 const fmt = (n: number) => n.toLocaleString("en-AU", { style: "currency", currency: "AUD" });
 
@@ -24,17 +31,23 @@ const BILL_TABS: { key: BillKind; label: string; plural: string; singular: strin
   { key: "other", label: "Other expenses", plural: "other expenses", singular: "other expense" },
 ];
 
-const MONTH_LABEL = new Intl.DateTimeFormat("en-AU", { month: "long", year: "numeric" });
-const monthLabel = (month: string) => MONTH_LABEL.format(new Date(`${month}-01T00:00:00`));
-
 export default async function CostsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; show?: string; order?: string; tab?: string }>;
+  searchParams: Promise<{
+    month?: string;
+    show?: string;
+    order?: string;
+    tab?: string;
+    period?: string;
+    from?: string;
+    to?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const today = brisbaneToday();
-  const month = sp.month && /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.month) ? sp.month : today.slice(0, 7);
+  const chosen = resolvePeriod(sp, today);
+  const { month } = chosen;
   const showUnpaid = sp.show === "unpaid";
   const tab: BillKind = sp.tab === "shipping" || sp.tab === "other" ? sp.tab : "supplier";
 
@@ -87,7 +100,8 @@ export default async function CostsPage({
   }));
 
   const costsByOrder = buildCostsByOrder(expenses, allocations);
-  const summary = summariseMonth({ month, orders, costsByOrder, expenses });
+  const summary = summarisePeriod({ period: chosen.period, orders, costsByOrder, expenses });
+  const monthRows = monthBreakdown({ period: chosen.period, orders, costsByOrder, expenses });
   const unassigned = unassignedTotal(expenses, allocations);
 
   const allocationsByExpense = new Map<string, { order_id: string; amount: number }[]>();
@@ -105,8 +119,21 @@ export default async function CostsPage({
   const tabTotal = cents(tabBills.reduce((s, e) => s + e.amount, 0));
   const owed = cents(tabUnpaid.reduce((s, e) => s + e.amount, 0));
   const tabInfo = BILL_TABS.find((t) => t.key === tab)!;
+  const periodParams = (): Record<string, string> => ({
+    period: chosen.kind,
+    month,
+    ...(chosen.kind === "custom" ? { from: chosen.from, to: chosen.to } : {}),
+  });
   const billsHref = (kind: BillKind, unpaidOnly: boolean) =>
-    `/costs?${new URLSearchParams({ month, tab: kind, ...(unpaidOnly ? { show: "unpaid" } : {}) })}#bills`;
+    `/costs?${new URLSearchParams({ ...periodParams(), tab: kind, ...(unpaidOnly ? { show: "unpaid" } : {}) })}#bills`;
+  const profitHref = (choice: { period: PeriodKind; from?: string; to?: string }) =>
+    `/costs?${new URLSearchParams({
+      month,
+      period: choice.period,
+      ...(choice.period === "custom" ? { from: choice.from ?? chosen.from, to: choice.to ?? chosen.to } : {}),
+      tab,
+      ...(showUnpaid ? { show: "unpaid" } : {}),
+    })}#profit`;
   const shownBills: BillRow[] = (showUnpaid ? tabUnpaid : tabBills).map((e) => ({
     id: e.id,
     kind: e.kind,
@@ -137,33 +164,25 @@ export default async function CostsPage({
         </p>
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-slate-900">Profit for {monthLabel(month)}</h2>
-          <form method="get" className="flex items-center gap-2">
-            <label className="sr-only" htmlFor="month">
-              Month
-            </label>
-            <input
-              id="month"
-              type="month"
-              name="month"
-              defaultValue={month}
-              className="rounded-md border border-slate-300 px-2 py-1 text-sm"
-            />
-            <input type="hidden" name="tab" value={tab} />
-            {showUnpaid && <input type="hidden" name="show" value="unpaid" />}
-            <button
-              type="submit"
-              className="rounded-md border border-slate-300 px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              Show
-            </button>
-          </form>
-        </div>
+      <section id="profit" className="rounded-lg border border-slate-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-slate-900">
+          {chosen.kind === "all" ? "Profit — all time" : `Profit for ${chosen.label}`}
+        </h2>
         <div className="mt-3">
-          <CostsMonthSummary summary={summary} monthLabel={monthLabel(month)} unassigned={unassigned} />
+          <CostsPeriodPicker
+            kind={chosen.kind}
+            month={month}
+            from={chosen.from}
+            to={chosen.to}
+            presets={periodPresets(today)}
+            hrefFor={profitHref}
+            carry={{ tab, ...(showUnpaid ? { show: "unpaid" } : {}) }}
+          />
         </div>
+        <div className="mt-4">
+          <CostsPeriodSummary summary={summary} phrase={chosen.phrase} unassigned={unassigned} />
+        </div>
+        <CostsByMonthTable rows={monthRows} total={summary} />
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">

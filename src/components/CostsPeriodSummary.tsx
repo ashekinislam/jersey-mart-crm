@@ -1,4 +1,4 @@
-import type { MonthSummary } from "@/lib/costs";
+import type { PeriodSummary } from "@/lib/costs";
 
 const fmt = (n: number) => n.toLocaleString("en-AU", { style: "currency", currency: "AUD" });
 
@@ -28,30 +28,40 @@ function Row({
           strong && value < 0 ? "text-red-600" : ""
         }`}
       >
-        {negative ? `−${fmt(Math.abs(value))}` : fmt(value)}
+        {negative && value !== 0 ? `−${fmt(Math.abs(value))}` : fmt(value)}
       </span>
     </div>
   );
 }
 
-/** Profit for one month, worked out the same way as the ledger spreadsheet: sales
- * excluding GST, minus the supplier + shipping costs of those orders, minus ad spend
- * and other business expenses. */
-export function CostsMonthSummary({
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md bg-slate-50 px-3 py-2">
+      <p className="text-[0.65rem] uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="text-sm font-semibold tabular-nums text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+/** Profit for a month, all time, or a custom date range -- worked out the same way as
+ * the ledger spreadsheet: sales excluding GST, minus the supplier + shipping costs of
+ * those orders, minus ad spend and other business expenses. `phrase` says which period
+ * it is, e.g. "in September 2026" or "between 1 Jul 2026 and 21 Sep 2026". */
+export function CostsPeriodSummary({
   summary,
-  monthLabel,
+  phrase,
   unassigned,
 }: {
-  summary: MonthSummary;
-  monthLabel: string;
+  summary: PeriodSummary;
+  phrase: string;
   unassigned: number;
 }) {
   const s = summary;
   return (
     <div>
       <p className="text-xs text-slate-500">
-        {s.orderCount} order{s.orderCount === 1 ? "" : "s"} placed in {monthLabel} (quotes and cancelled orders
-        left out). Ad spend and other expenses are the charges dated in {monthLabel}.
+        {s.orderCount} order{s.orderCount === 1 ? "" : "s"} placed {phrase} (quotes and cancelled orders left out).
+        Ad spend and other expenses are the charges dated in the same period.
       </p>
 
       <div className="mt-3 text-sm">
@@ -65,10 +75,21 @@ export function CostsMonthSummary({
         <Row label="Profit after ads and expenses" value={s.netProfit} strong />
       </div>
 
-      {s.adSpendPerOrder != null && s.adSpend > 0 && (
-        <p className="mt-2 text-xs text-slate-500">
-          Ad spend works out to {fmt(s.adSpendPerOrder)} per order this month.
-        </p>
+      {s.orderCount > 0 && (
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <Stat
+            label="Margin (gross profit ÷ sales ex GST)"
+            value={s.marginPct != null ? `${s.marginPct.toFixed(1)}%` : "—"}
+          />
+          <Stat
+            label="Profit per order (after ads)"
+            value={s.profitPerOrder != null ? fmt(s.profitPerOrder) : "—"}
+          />
+          <Stat
+            label="Ad spend per order"
+            value={s.adSpendPerOrder != null && s.adSpend > 0 ? fmt(s.adSpendPerOrder) : "—"}
+          />
+        </div>
       )}
 
       <div className="mt-3 space-y-1 text-xs text-amber-700">

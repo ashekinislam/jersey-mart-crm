@@ -222,9 +222,114 @@ export function orderProfit(
   };
 }
 
-// ---- Monthly summary ----------------------------------------------------------
+// ---- Dates and periods --------------------------------------------------------
 
-export interface MonthSummary {
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A real calendar date written YYYY-MM-DD (rejects things like 2026-02-31). */
+export const isValidDate = (s: unknown): s is string => {
+  if (typeof s !== "string" || !DATE_RE.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+};
+
+const isValidMonth = (s: unknown): s is string =>
+  typeof s === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
+
+export function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Australian financial year runs 1 July to 30 June. */
+export function financialYearStart(today: string): string {
+  const [year, month] = today.split("-").map(Number);
+  return `${month >= 7 ? year : year - 1}-07-01`;
+}
+
+const MONTH_LABEL = new Intl.DateTimeFormat("en-AU", { month: "long", year: "numeric" });
+const DAY_LABEL = new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", year: "numeric" });
+export const monthLabel = (month: string) => MONTH_LABEL.format(new Date(`${month}-01T00:00:00`));
+export const dayLabel = (date: string) => DAY_LABEL.format(new Date(`${date}T00:00:00`));
+
+/** A stretch of time: `start` is included, `end` is not (both YYYY-MM-DD). */
+export interface Period {
+  start: string;
+  end: string;
+}
+
+export const ALL_TIME: Period = { start: "0000-01-01", end: "9999-12-31" };
+
+export const inRange = (date: string, period: Period) => date >= period.start && date < period.end;
+
+export type PeriodKind = "month" | "all" | "custom";
+
+export interface ResolvedPeriod {
+  kind: PeriodKind;
+  /** YYYY-MM -- the month picker's value (and the month the ad list shows). */
+  month: string;
+  /** Custom range, both days included. Always set so the form has sensible defaults. */
+  from: string;
+  to: string;
+  period: Period;
+  /** e.g. "September 2026", "all time", "1 Jul 2026 – 21 Sep 2026" */
+  label: string;
+  /** e.g. "in September 2026", "in total (all time)", "between 1 Jul 2026 and 21 Sep 2026" */
+  phrase: string;
+}
+
+/** Turns the Costs page's URL choices into a concrete period. Anything missing or
+ * invalid falls back to something sensible rather than erroring. */
+export function resolvePeriod(
+  input: { period?: string; month?: string; from?: string; to?: string },
+  today: string
+): ResolvedPeriod {
+  const month = isValidMonth(input.month) ? input.month : today.slice(0, 7);
+  let from = isValidDate(input.from) ? input.from : addDays(today, -29);
+  let to = isValidDate(input.to) ? input.to : today;
+  if (from > to) [from, to] = [to, from];
+
+  if (input.period === "all") {
+    return { kind: "all", month, from, to, period: ALL_TIME, label: "all time", phrase: "in total (all time)" };
+  }
+  if (input.period === "custom") {
+    return {
+      kind: "custom",
+      month,
+      from,
+      to,
+      period: { start: from, end: addDays(to, 1) },
+      label: `${dayLabel(from)} – ${dayLabel(to)}`,
+      phrase: `between ${dayLabel(from)} and ${dayLabel(to)}`,
+    };
+  }
+  return {
+    kind: "month",
+    month,
+    from,
+    to,
+    period: monthRange(month),
+    label: monthLabel(month),
+    phrase: `in ${monthLabel(month)}`,
+  };
+}
+
+/** Quick date ranges offered next to the custom range picker. */
+export function periodPresets(today: string): { label: string; from: string; to: string }[] {
+  const fyStart = financialYearStart(today);
+  const fyYear = Number(fyStart.slice(0, 4));
+  return [
+    { label: "Last 30 days", from: addDays(today, -29), to: today },
+    { label: "Last 90 days", from: addDays(today, -89), to: today },
+    { label: "This financial year", from: fyStart, to: today },
+    { label: "Last financial year", from: `${fyYear - 1}-07-01`, to: `${fyYear}-06-30` },
+  ];
+}
+
+// ---- Profit summaries (a month, all time, or any date range) -------------------
+
+export interface PeriodSummary {
   orderCount: number;
   salesIncGst: number;
   gst: number;
@@ -234,23 +339,29 @@ export interface MonthSummary {
   adSpend: number;
   otherExpenses: number;
   netProfit: number;
+  /** Gross profit as a % of sales excluding GST. */
+  marginPct: number | null;
+  /** Profit after ads and expenses, divided by the number of orders. */
+  profitPerOrder: number | null;
   adSpendPerOrder: number | null;
-  /** Orders in the month still missing a supplier bill or a shipping cost. */
+  /** Orders in the period still missing a supplier bill or a shipping cost. */
   ordersMissingCosts: number;
-  /** Orders in the month with no total amount at all. */
+  /** Orders in the period with no total amount at all. */
   ordersWithoutTotal: number;
 }
 
-/** Sales and order costs are for orders PLACED in the month (quotes and cancelled
- * orders excluded); ad spend and other expenses are for charges DATED in the month. */
-export function summariseMonth(args: {
-  month: string;
+interface SummaryArgs {
+  period: Period;
   orders: Order[];
   costsByOrder: Map<string, OrderCosts>;
   expenses: Expense[];
-}): MonthSummary {
-  const monthOrders = args.orders.filter(
-    (o) => inMonth(o.order_date, args.month) && expectsCosts(o.order_status)
+}
+
+/** Sales and order costs are for orders PLACED in the period (quotes and cancelled
+ * orders excluded); ad spend and other expenses are for charges DATED in the period. */
+export function summarisePeriod({ period, orders, costsByOrder, expenses }: SummaryArgs): PeriodSummary {
+  const periodOrders = orders.filter(
+    (o) => inRange(o.order_date, period) && expectsCosts(o.order_status)
   );
 
   let salesIncGst = 0;
@@ -259,27 +370,28 @@ export function summariseMonth(args: {
   let ordersMissingCosts = 0;
   let ordersWithoutTotal = 0;
 
-  for (const o of monthOrders) {
+  for (const o of periodOrders) {
     const total = getOrderMoney(moneyFields(o)).total;
     if (total == null) ordersWithoutTotal++;
     else {
       salesIncGst += total;
       salesExGst += exGst(total);
     }
-    const costs = args.costsByOrder.get(o.id);
+    const costs = costsByOrder.get(o.id);
     orderCosts += costs?.total ?? 0;
     if (!costs?.hasSupplier || !costs?.hasShipping) ordersMissingCosts++;
   }
 
-  const monthExpenses = args.expenses.filter((e) => inMonth(e.expense_date, args.month));
-  const adSpend = monthExpenses.filter((e) => e.kind === "ads").reduce((s, e) => s + e.amount, 0);
-  const otherExpenses = monthExpenses
+  const periodExpenses = expenses.filter((e) => inRange(e.expense_date, period));
+  const adSpend = periodExpenses.filter((e) => e.kind === "ads").reduce((s, e) => s + e.amount, 0);
+  const otherExpenses = periodExpenses
     .filter((e) => e.kind === "other")
     .reduce((s, e) => s + e.amount, 0);
 
   const grossProfit = salesExGst - orderCosts;
+  const netProfit = grossProfit - adSpend - otherExpenses;
   return {
-    orderCount: monthOrders.length,
+    orderCount: periodOrders.length,
     salesIncGst: cents(salesIncGst),
     gst: cents(salesIncGst - salesExGst),
     salesExGst: cents(salesExGst),
@@ -287,11 +399,40 @@ export function summariseMonth(args: {
     grossProfit: cents(grossProfit),
     adSpend: cents(adSpend),
     otherExpenses: cents(otherExpenses),
-    netProfit: cents(grossProfit - adSpend - otherExpenses),
-    adSpendPerOrder: monthOrders.length > 0 ? cents(adSpend / monthOrders.length) : null,
+    netProfit: cents(netProfit),
+    marginPct: salesExGst > 0 ? (grossProfit / salesExGst) * 100 : null,
+    profitPerOrder: periodOrders.length > 0 ? cents(netProfit / periodOrders.length) : null,
+    adSpendPerOrder: periodOrders.length > 0 ? cents(adSpend / periodOrders.length) : null,
     ordersMissingCosts,
     ordersWithoutTotal,
   };
+}
+
+/** One row per calendar month across the period's data, newest first. Months at the
+ * edge of a custom range are clipped to it, so the rows always add up to the total. */
+export function monthBreakdown(args: SummaryArgs): { month: string; summary: PeriodSummary }[] {
+  const { period, orders, expenses } = args;
+  const dates = [
+    ...orders
+      .filter((o) => inRange(o.order_date, period) && expectsCosts(o.order_status))
+      .map((o) => o.order_date),
+    ...expenses
+      .filter((e) => (e.kind === "ads" || e.kind === "other") && inRange(e.expense_date, period))
+      .map((e) => e.expense_date),
+  ].sort();
+  if (dates.length === 0) return [];
+
+  const last = dates[dates.length - 1].slice(0, 7);
+  const rows: { month: string; summary: PeriodSummary }[] = [];
+  for (let month = dates[0].slice(0, 7); month <= last && rows.length < 240; month = nextMonthStart(month).slice(0, 7)) {
+    const { start, end } = monthRange(month);
+    const clipped: Period = {
+      start: start > period.start ? start : period.start,
+      end: end < period.end ? end : period.end,
+    };
+    rows.push({ month, summary: summarisePeriod({ ...args, period: clipped }) });
+  }
+  return rows.reverse();
 }
 
 /** Supplier/shipping money on bills that hasn't been assigned to an order yet, across all time. */

@@ -3,13 +3,9 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { brisbaneToday, cents, type ActionResult, type ExpenseInput } from "@/lib/costs";
+import { brisbaneToday, cents, isValidDate, type ActionResult, type ExpenseInput } from "@/lib/costs";
 
 const KINDS = new Set(["supplier", "shipping", "ads", "other"]);
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-const isValidDate = (s: unknown): s is string =>
-  typeof s === "string" && DATE_RE.test(s) && !Number.isNaN(new Date(`${s}T00:00:00Z`).getTime());
 
 async function requireUser() {
   const supabase = await createClient();
