@@ -78,16 +78,18 @@ export function BillsList({
   bills,
   orders,
   today,
+  emptyText = "Nothing here yet.",
 }: {
   bills: BillRow[];
   orders: OrderOption[];
   today: string;
+  emptyText?: string;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const orderById = new Map(orders.map((o) => [o.id, o]));
 
   if (bills.length === 0) {
-    return <p className="mt-3 text-sm text-slate-500">Nothing here yet.</p>;
+    return <p className="mt-3 text-sm text-slate-500">{emptyText}</p>;
   }
 
   return (

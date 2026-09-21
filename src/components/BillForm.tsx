@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useRef, useState, useTransition } from "react";
+import { FormEvent, useState, useTransition } from "react";
 import { addExpense, updateExpense } from "@/app/(app)/costs/actions";
 import { cents, splitByWeights, type ExpenseInput } from "@/lib/costs";
 import { EXPENSE_KIND_LABELS, type ExpenseKind } from "@/lib/types";
@@ -64,21 +64,24 @@ export function BillForm({
   today,
   initial,
   defaultOrderId,
+  defaultKind,
   onDone,
 }: {
   orders: OrderOption[];
   today: string;
   initial?: BillInitial;
   defaultOrderId?: string;
+  /** Which type a new bill starts as; follows the Costs page tab. */
+  defaultKind?: BillKind;
   onDone?: () => void;
 }) {
-  const [kind, setKind] = useState<BillKind>(initial?.kind ?? "supplier");
+  const [kind, setKind] = useState<BillKind>(initial?.kind ?? defaultKind ?? "supplier");
   const [date, setDate] = useState(initial?.expense_date ?? today);
   const [payee, setPayee] = useState(initial?.payee ?? "");
   const [reference, setReference] = useState(initial?.reference ?? "");
   const [amountText, setAmountText] = useState(initial ? initial.amount.toFixed(2) : "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [paid, setPaid] = useState(initial ? initial.paid_date != null : false);
+  const [paid, setPaid] = useState(initial ? initial.paid_date != null : defaultKind === "other");
   const [paidDate, setPaidDate] = useState(initial?.paid_date ?? today);
   const [selected, setSelected] = useState<string[]>(
     initial?.allocations.map((a) => a.order_id) ?? (defaultOrderId ? [defaultOrderId] : [])
@@ -90,7 +93,13 @@ export function BillForm({
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const paidTouched = useRef(false);
+  const [paidTouched, setPaidTouched] = useState(false);
+  // Switching tabs on the Costs page switches this form's type too (anything already typed is kept).
+  const [seenDefaultKind, setSeenDefaultKind] = useState(defaultKind);
+  if (!initial && defaultKind && defaultKind !== seenDefaultKind) {
+    setSeenDefaultKind(defaultKind);
+    changeKind(defaultKind);
+  }
   const showToast = useToast();
 
   const total = parseMoney(amountText);
@@ -124,7 +133,7 @@ export function BillForm({
     setKind(next);
     // Overheads (printer, software...) are normally paid on the spot; supplier and
     // shipping bills usually aren't -- unless the owner has already chosen.
-    if (!paidTouched.current) setPaid(next === "other");
+    if (!paidTouched) setPaid(next === "other");
   }
 
   function toggleOrder(id: string) {
@@ -147,7 +156,7 @@ export function BillForm({
     setManual({});
     setMode("jerseys");
     setPaid(kind === "other");
-    paidTouched.current = false;
+    setPaidTouched(false);
   }
 
   function onSubmit(e: FormEvent) {
@@ -368,7 +377,7 @@ export function BillForm({
             type="checkbox"
             checked={paid}
             onChange={(e) => {
-              paidTouched.current = true;
+              setPaidTouched(true);
               setPaid(e.target.checked);
             }}
             disabled={isPending}

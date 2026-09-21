@@ -12,11 +12,17 @@ import { getOrderMoney, moneyFields } from "@/lib/orderMoney";
 import type { Customer, Expense, ExpenseAllocation, Order } from "@/lib/types";
 import { AdSpendQuickAdd } from "@/components/AdSpendQuickAdd";
 import { AdSpendList } from "@/components/AdSpendList";
-import { BillForm, type OrderOption } from "@/components/BillForm";
+import { BillForm, type BillKind, type OrderOption } from "@/components/BillForm";
 import { BillsList, type BillRow } from "@/components/BillsList";
 import { CostsMonthSummary } from "@/components/CostsMonthSummary";
 
 const fmt = (n: number) => n.toLocaleString("en-AU", { style: "currency", currency: "AUD" });
+
+const BILL_TABS: { key: BillKind; label: string; plural: string; singular: string }[] = [
+  { key: "supplier", label: "Supplier bills", plural: "supplier bills", singular: "supplier bill" },
+  { key: "shipping", label: "Shipping", plural: "shipping invoices", singular: "shipping invoice" },
+  { key: "other", label: "Other expenses", plural: "other expenses", singular: "other expense" },
+];
 
 const MONTH_LABEL = new Intl.DateTimeFormat("en-AU", { month: "long", year: "numeric" });
 const monthLabel = (month: string) => MONTH_LABEL.format(new Date(`${month}-01T00:00:00`));
@@ -24,12 +30,13 @@ const monthLabel = (month: string) => MONTH_LABEL.format(new Date(`${month}-01T0
 export default async function CostsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; show?: string; order?: string }>;
+  searchParams: Promise<{ month?: string; show?: string; order?: string; tab?: string }>;
 }) {
   const sp = await searchParams;
   const today = brisbaneToday();
   const month = sp.month && /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.month) ? sp.month : today.slice(0, 7);
   const showUnpaid = sp.show === "unpaid";
+  const tab: BillKind = sp.tab === "shipping" || sp.tab === "other" ? sp.tab : "supplier";
 
   const supabase = await createClient();
   const [
@@ -91,10 +98,16 @@ export default async function CostsPage({
     ]);
   }
 
-  const bills = expenses.filter((e) => e.kind !== "ads");
-  const unpaidBills = bills.filter((e) => e.paid_date == null);
-  const owed = cents(unpaidBills.reduce((s, e) => s + e.amount, 0));
-  const shownBills: BillRow[] = (showUnpaid ? unpaidBills : bills).map((e) => ({
+  const billsOfKind = (kind: BillKind) => expenses.filter((e) => e.kind === kind);
+  const unpaidOf = (list: Expense[]) => list.filter((e) => e.paid_date == null);
+  const tabBills = billsOfKind(tab);
+  const tabUnpaid = unpaidOf(tabBills);
+  const tabTotal = cents(tabBills.reduce((s, e) => s + e.amount, 0));
+  const owed = cents(tabUnpaid.reduce((s, e) => s + e.amount, 0));
+  const tabInfo = BILL_TABS.find((t) => t.key === tab)!;
+  const billsHref = (kind: BillKind, unpaidOnly: boolean) =>
+    `/costs?${new URLSearchParams({ month, tab: kind, ...(unpaidOnly ? { show: "unpaid" } : {}) })}#bills`;
+  const shownBills: BillRow[] = (showUnpaid ? tabUnpaid : tabBills).map((e) => ({
     id: e.id,
     kind: e.kind,
     expense_date: e.expense_date,
@@ -138,6 +151,7 @@ export default async function CostsPage({
               defaultValue={month}
               className="rounded-md border border-slate-300 px-2 py-1 text-sm"
             />
+            <input type="hidden" name="tab" value={tab} />
             {showUnpaid && <input type="hidden" name="show" value="unpaid" />}
             <button
               type="submit"
@@ -169,30 +183,77 @@ export default async function CostsPage({
           A supplier bill for several orders, a shipping invoice, or another business expense.
         </p>
         <div className="mt-3">
-          <BillForm orders={orderOptions} today={today} defaultOrderId={defaultOrderId} />
+          <BillForm
+            orders={orderOptions}
+            today={today}
+            defaultOrderId={defaultOrderId}
+            defaultKind={tab}
+          />
         </div>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-slate-900">Bills</h2>
+      <section id="bills" className="rounded-lg border border-slate-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-slate-900">Bills</h2>
+
+        <nav aria-label="Kind of bill" className="mt-3 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+          {BILL_TABS.map((t) => {
+            const list = billsOfKind(t.key);
+            const unpaidCount = unpaidOf(list).length;
+            return (
+              <Link
+                key={t.key}
+                href={billsHref(t.key, false)}
+                aria-current={tab === t.key ? "page" : undefined}
+                className={`${tabClass(tab === t.key)} inline-flex items-center gap-1.5`}
+              >
+                {t.label} ({list.length})
+                {unpaidCount > 0 && (
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[0.65rem] font-semibold ${
+                      tab === t.key ? "bg-amber-300 text-amber-950" : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {unpaidCount} unpaid
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-slate-600">
+            {tabBills.length} {tabBills.length === 1 ? tabInfo.singular : tabInfo.plural} · {fmt(tabTotal)} in total
+          </p>
           <div className="flex gap-2">
-            <Link href={`/costs?month=${month}`} className={tabClass(!showUnpaid)}>
+            <Link href={billsHref(tab, false)} className={tabClass(!showUnpaid)}>
               All
             </Link>
-            <Link href={`/costs?month=${month}&show=unpaid`} className={tabClass(showUnpaid)}>
-              Not paid yet ({unpaidBills.length})
+            <Link href={billsHref(tab, true)} className={tabClass(showUnpaid)}>
+              Not paid yet ({tabUnpaid.length})
             </Link>
           </div>
         </div>
-        {unpaidBills.length > 0 ? (
-          <p className="mt-2 text-sm text-amber-800">
-            You still owe {fmt(owed)} across {unpaidBills.length} bill{unpaidBills.length === 1 ? "" : "s"}.
-          </p>
-        ) : (
-          <p className="mt-2 text-sm text-emerald-700">All bills are paid.</p>
-        )}
-        <BillsList bills={shownBills} orders={orderOptions} today={today} />
+        {tabBills.length > 0 &&
+          (tabUnpaid.length > 0 ? (
+            <p className="mt-1 text-sm text-amber-800">
+              You still owe {fmt(owed)} across {tabUnpaid.length}{" "}
+              {tabUnpaid.length === 1 ? tabInfo.singular : tabInfo.plural}.
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-emerald-700">All {tabInfo.plural} are paid.</p>
+          ))}
+
+        <BillsList
+          bills={shownBills}
+          orders={orderOptions}
+          today={today}
+          emptyText={
+            showUnpaid && tabBills.length > 0
+              ? `Nothing unpaid — all ${tabInfo.plural} are paid.`
+              : `No ${tabInfo.plural} entered yet.`
+          }
+        />
       </section>
     </div>
   );
