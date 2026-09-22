@@ -25,6 +25,10 @@ import { CostsPeriodSummary } from "@/components/CostsPeriodSummary";
 import { CostsByMonthTable } from "@/components/CostsByMonthTable";
 import { CostsPeriodPicker } from "@/components/CostsPeriodPicker";
 
+// The Facebook backfill can page through ~3 years of daily Insights calls --
+// give it (and its server action) more than the platform default to finish.
+export const maxDuration = 60;
+
 const fmt = (n: number) => n.toLocaleString("en-AU", { style: "currency", currency: "AUD" });
 
 const BILL_TABS: { key: BillKind; label: string; plural: string; singular: string }[] = [

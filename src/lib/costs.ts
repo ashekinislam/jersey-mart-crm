@@ -244,6 +244,14 @@ export function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Calendar-month subtraction (safe against 28/30/31-day drift, unlike a fixed
+ * day count) -- e.g. for staying under an API's "N months back" limit. */
+export function monthsAgo(date: string, months: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCMonth(d.getUTCMonth() - months);
+  return d.toISOString().slice(0, 10);
+}
+
 /** Australian financial year runs 1 July to 30 June. */
 export function financialYearStart(today: string): string {
   const [year, month] = today.split("-").map(Number);

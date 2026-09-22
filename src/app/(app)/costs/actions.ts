@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { addDays, brisbaneToday, cents, isValidDate, type ActionResult, type ExpenseInput } from "@/lib/costs";
+import { addDays, brisbaneToday, cents, isValidDate, monthsAgo, type ActionResult, type ExpenseInput } from "@/lib/costs";
 import { runFacebookAdsSync } from "@/lib/facebookAdsSync";
 
 const KINDS = new Set(["supplier", "shipping", "ads", "other"]);
@@ -232,12 +232,13 @@ export async function syncFacebookAdsRecent(): Promise<ActionResult> {
   return { ok: true, message: syncSummary(result) };
 }
 
-/** One-time pull of full ad spend history (Meta typically retains ~37 months). */
+/** One-time pull of full ad spend history. Meta hard-caps the Insights API at
+ * 37 months back from today; 36 leaves a day of safety margin. */
 export async function backfillFacebookAds(): Promise<ActionResult> {
   const { supabase, user } = await requireUser();
   const today = brisbaneToday();
   const result = await runFacebookAdsSync(supabase, user.id, {
-    since: addDays(today, -1150),
+    since: monthsAgo(today, 36),
     until: today,
   });
   if (!result.ok) {
