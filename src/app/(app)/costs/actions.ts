@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { brisbaneToday, cents, isValidDate, type ActionResult, type ExpenseInput } from "@/lib/costs";
+import { addDays, brisbaneToday, cents, isValidDate, type ActionResult, type ExpenseInput } from "@/lib/costs";
+import { runFacebookAdsSync } from "@/lib/facebookAdsSync";
 
 const KINDS = new Set(["supplier", "shipping", "ads", "other"]);
 
@@ -195,4 +196,49 @@ export async function addAdSpend(input: {
 
   refreshEverything();
   return { ok: true };
+}
+
+const FB_SYNC_ERRORS: Record<string, string> = {
+  not_configured:
+    "Facebook ad sync isn't set up yet (missing META_ADS_ACCOUNT_ID / META_ADS_ACCESS_TOKEN).",
+  fetch_failed: "Couldn't reach Facebook to fetch spend -- try again shortly.",
+};
+
+function syncSummary(result: { synced: number; skippedManual: number }): string {
+  const skipped =
+    result.skippedManual > 0
+      ? ` (${result.skippedManual} day${result.skippedManual === 1 ? "" : "s"} left alone -- already entered manually)`
+      : "";
+  return `Synced ${result.synced} day${result.synced === 1 ? "" : "s"} of Facebook ad spend${skipped}.`;
+}
+
+/** Refreshes the last 14 days -- wide enough to catch Meta's attribution
+ * adjustments without re-fetching the whole history every time. */
+export async function syncFacebookAdsRecent(): Promise<ActionResult> {
+  const { supabase, user } = await requireUser();
+  const today = brisbaneToday();
+  const result = await runFacebookAdsSync(supabase, user.id, {
+    since: addDays(today, -13),
+    until: today,
+  });
+  if (!result.ok) {
+    return { ok: false, error: FB_SYNC_ERRORS[result.error] ?? "Sync failed -- try again." };
+  }
+  refreshEverything();
+  return { ok: true, message: syncSummary(result) };
+}
+
+/** One-time pull of full ad spend history (Meta typically retains ~37 months). */
+export async function backfillFacebookAds(): Promise<ActionResult> {
+  const { supabase, user } = await requireUser();
+  const today = brisbaneToday();
+  const result = await runFacebookAdsSync(supabase, user.id, {
+    since: addDays(today, -1150),
+    until: today,
+  });
+  if (!result.ok) {
+    return { ok: false, error: FB_SYNC_ERRORS[result.error] ?? "Backfill failed -- try again." };
+  }
+  refreshEverything();
+  return { ok: true, message: syncSummary(result) };
 }

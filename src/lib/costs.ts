@@ -73,7 +73,9 @@ export interface ExpenseInput {
   allocations: { order_id: string; amount: number }[];
 }
 
-export type ActionResult = { ok: true } | { ok: false; error: string };
+export type ActionResult =
+  | { ok: true; message?: string }
+  | { ok: false; error: string };
 
 // ---- Per-order costs ----------------------------------------------------------
 

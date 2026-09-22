@@ -18,6 +18,7 @@ import { getOrderMoney, moneyFields } from "@/lib/orderMoney";
 import type { Customer, Expense, ExpenseAllocation, Order } from "@/lib/types";
 import { AdSpendQuickAdd } from "@/components/AdSpendQuickAdd";
 import { AdSpendList } from "@/components/AdSpendList";
+import { FacebookAdsSyncButtons } from "@/components/FacebookAdsSyncButtons";
 import { BillForm, type BillKind, type OrderOption } from "@/components/BillForm";
 import { BillsList, type BillRow } from "@/components/BillsList";
 import { CostsPeriodSummary } from "@/components/CostsPeriodSummary";
@@ -196,9 +197,14 @@ export default async function CostsPage({
         <h2 className="text-sm font-semibold text-slate-900">Facebook ad charges</h2>
         <p className="mt-1 text-xs text-slate-500">
           Type the amount and press Enter — it clears ready for the next charge.
+          Or pull real spend straight from Facebook below (never overwrites a
+          charge you&rsquo;ve entered by hand).
         </p>
         <div className="mt-3">
           <AdSpendQuickAdd today={today} />
+        </div>
+        <div className="mt-3">
+          <FacebookAdsSyncButtons />
         </div>
         <AdSpendList ads={monthAds} monthLabel={monthLabel(month)} />
       </section>
