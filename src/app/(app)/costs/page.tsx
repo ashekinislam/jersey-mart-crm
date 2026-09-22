@@ -4,6 +4,7 @@ import {
   brisbaneToday,
   buildCostsByOrder,
   cents,
+  expectsCosts,
   inMonth,
   monthBreakdown,
   monthLabel,
@@ -90,16 +91,22 @@ export default async function CostsPage({
     if (orderId) playersByOrder.set(orderId, (playersByOrder.get(orderId) ?? 0) + 1);
   }
 
-  const orderOptions: OrderOption[] = orders.map((o) => ({
-    id: o.id,
-    title: customerName.get(o.customer_id) ?? "Unknown customer",
-    subtitle: o.label || `Order — ${new Date(o.order_date).toLocaleDateString("en-AU")}`,
-    href: `/customers/${o.customer_id}/orders/${o.id}`,
-    players: playersByOrder.get(o.id) ?? 0,
-    value: getOrderMoney(moneyFields(o)).total,
-  }));
-
   const costsByOrder = buildCostsByOrder(expenses, allocations);
+  const orderOptions: OrderOption[] = orders.map((o) => {
+    const costs = costsByOrder.get(o.id);
+    const shouldHaveCosts = expectsCosts(o.order_status);
+    return {
+      id: o.id,
+      title: customerName.get(o.customer_id) ?? "Unknown customer",
+      subtitle: o.label || `Order — ${new Date(o.order_date).toLocaleDateString("en-AU")}`,
+      href: `/customers/${o.customer_id}/orders/${o.id}`,
+      players: playersByOrder.get(o.id) ?? 0,
+      value: getOrderMoney(moneyFields(o)).total,
+      missingSupplier: shouldHaveCosts && !costs?.hasSupplier,
+      missingShipping: shouldHaveCosts && !costs?.hasShipping,
+    };
+  });
+
   const summary = summarisePeriod({ period: chosen.period, orders, costsByOrder, expenses });
   const monthRows = monthBreakdown({ period: chosen.period, orders, costsByOrder, expenses });
   const unassigned = unassignedTotal(expenses, allocations);

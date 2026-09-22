@@ -20,6 +20,10 @@ export interface OrderOption {
   players: number;
   /** Order total incl. GST, if known (for "split by order value"). */
   value: number | null;
+  /** True when this order has no supplier bill entered yet (false for quotes/cancelled orders, which aren't expected to have one). */
+  missingSupplier: boolean;
+  /** Same, for shipping. */
+  missingShipping: boolean;
 }
 
 export interface BillInitial {
@@ -91,6 +95,7 @@ export function BillForm({
     initial ? Object.fromEntries(initial.allocations.map((a) => [a.order_id, a.amount.toFixed(2)])) : {}
   );
   const [search, setSearch] = useState("");
+  const [onlyMissing, setOnlyMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [paidTouched, setPaidTouched] = useState(false);
@@ -125,9 +130,17 @@ export function BillForm({
   const assigned = cents(chosen.reduce((s, o) => s + amounts[o.id], 0));
   const left = cents(totalNumber - assigned);
 
-  const visibleOrders = orders.filter((o) =>
-    `${o.title} ${o.subtitle}`.toLowerCase().includes(search.trim().toLowerCase())
-  );
+  // Whether THIS order is still missing the kind of bill being added right now (only
+  // meaningful for supplier/shipping -- "other" expenses aren't assigned to an order).
+  const isMissing = (o: OrderOption) =>
+    kind === "supplier" ? o.missingSupplier : kind === "shipping" ? o.missingShipping : false;
+  const missingCount = orders.filter(isMissing).length;
+
+  const visibleOrders = orders
+    .filter((o) => `${o.title} ${o.subtitle}`.toLowerCase().includes(search.trim().toLowerCase()))
+    .filter((o) => !onlyMissing || isMissing(o))
+    // Missing bills float to the top so they're the first thing seen, without hiding the rest.
+    .sort((a, b) => Number(isMissing(b)) - Number(isMissing(a)));
 
   function changeKind(next: BillKind) {
     setKind(next);
@@ -282,9 +295,21 @@ export function BillForm({
               aria-label="Search orders"
               className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
             />
+            {missingCount > 0 && (
+              <label className="mt-2 flex items-center gap-1.5 text-xs text-amber-800">
+                <input
+                  type="checkbox"
+                  checked={onlyMissing}
+                  onChange={(e) => setOnlyMissing(e.target.checked)}
+                />
+                Only show orders with no {kind === "supplier" ? "supplier bill" : "shipping"} yet ({missingCount})
+              </label>
+            )}
             <div className="mt-2 max-h-48 overflow-y-auto rounded-md border border-slate-200">
               {visibleOrders.length === 0 ? (
-                <p className="p-3 text-xs text-slate-500">No matching orders.</p>
+                <p className="p-3 text-xs text-slate-500">
+                  {onlyMissing ? "None -- every order has one." : "No matching orders."}
+                </p>
               ) : (
                 visibleOrders.map((o) => (
                   <label
@@ -301,6 +326,11 @@ export function BillForm({
                       <span className="font-medium text-slate-900">{o.title}</span>{" "}
                       <span className="text-slate-500">{o.subtitle}</span>
                     </span>
+                    {isMissing(o) && (
+                      <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                        No {kind === "supplier" ? "supplier bill" : "shipping"} yet
+                      </span>
+                    )}
                     <span className="shrink-0 text-xs text-slate-400">
                       {o.players} {o.players === 1 ? "jersey" : "jerseys"}
                     </span>
