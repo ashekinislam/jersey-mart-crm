@@ -95,7 +95,8 @@ export function BillForm({
     initial ? Object.fromEntries(initial.allocations.map((a) => [a.order_id, a.amount.toFixed(2)])) : {}
   );
   const [search, setSearch] = useState("");
-  const [onlyMissing, setOnlyMissing] = useState(false);
+  const [filterMissingSupplier, setFilterMissingSupplier] = useState(false);
+  const [filterMissingShipping, setFilterMissingShipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [paidTouched, setPaidTouched] = useState(false);
@@ -130,17 +131,20 @@ export function BillForm({
   const assigned = cents(chosen.reduce((s, o) => s + amounts[o.id], 0));
   const left = cents(totalNumber - assigned);
 
-  // Whether THIS order is still missing the kind of bill being added right now (only
-  // meaningful for supplier/shipping -- "other" expenses aren't assigned to an order).
-  const isMissing = (o: OrderOption) =>
-    kind === "supplier" ? o.missingSupplier : kind === "shipping" ? o.missingShipping : false;
-  const missingCount = orders.filter(isMissing).length;
+  // Missing-bill filters work independently of which kind of bill is being added right
+  // now, so "no shipping yet" can be checked while adding a supplier bill and vice versa.
+  const missingSupplierCount = orders.filter((o) => o.missingSupplier).length;
+  const missingShippingCount = orders.filter((o) => o.missingShipping).length;
+  const anyMissingFilterActive = filterMissingSupplier || filterMissingShipping;
+  const matchesMissingFilter = (o: OrderOption) =>
+    (filterMissingSupplier && o.missingSupplier) || (filterMissingShipping && o.missingShipping);
+  const isMissingAnything = (o: OrderOption) => o.missingSupplier || o.missingShipping;
 
   const visibleOrders = orders
     .filter((o) => `${o.title} ${o.subtitle}`.toLowerCase().includes(search.trim().toLowerCase()))
-    .filter((o) => !onlyMissing || isMissing(o))
-    // Missing bills float to the top so they're the first thing seen, without hiding the rest.
-    .sort((a, b) => Number(isMissing(b)) - Number(isMissing(a)));
+    .filter((o) => !anyMissingFilterActive || matchesMissingFilter(o))
+    // Orders missing a bill float to the top so they're the first thing seen, without hiding the rest.
+    .sort((a, b) => Number(isMissingAnything(b)) - Number(isMissingAnything(a)));
 
   function changeKind(next: BillKind) {
     setKind(next);
@@ -295,20 +299,34 @@ export function BillForm({
               aria-label="Search orders"
               className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
             />
-            {missingCount > 0 && (
-              <label className="mt-2 flex items-center gap-1.5 text-xs text-amber-800">
-                <input
-                  type="checkbox"
-                  checked={onlyMissing}
-                  onChange={(e) => setOnlyMissing(e.target.checked)}
-                />
-                Only show orders with no {kind === "supplier" ? "supplier bill" : "shipping"} yet ({missingCount})
-              </label>
+            {(missingSupplierCount > 0 || missingShippingCount > 0) && (
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-amber-800">
+                {missingSupplierCount > 0 && (
+                  <label className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={filterMissingSupplier}
+                      onChange={(e) => setFilterMissingSupplier(e.target.checked)}
+                    />
+                    Only show orders with no supplier bill yet ({missingSupplierCount})
+                  </label>
+                )}
+                {missingShippingCount > 0 && (
+                  <label className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={filterMissingShipping}
+                      onChange={(e) => setFilterMissingShipping(e.target.checked)}
+                    />
+                    Only show orders with no shipping yet ({missingShippingCount})
+                  </label>
+                )}
+              </div>
             )}
             <div className="mt-2 max-h-48 overflow-y-auto rounded-md border border-slate-200">
               {visibleOrders.length === 0 ? (
                 <p className="p-3 text-xs text-slate-500">
-                  {onlyMissing ? "None -- every order has one." : "No matching orders."}
+                  {anyMissingFilterActive ? "None -- every order has one." : "No matching orders."}
                 </p>
               ) : (
                 visibleOrders.map((o) => (
@@ -326,9 +344,14 @@ export function BillForm({
                       <span className="font-medium text-slate-900">{o.title}</span>{" "}
                       <span className="text-slate-500">{o.subtitle}</span>
                     </span>
-                    {isMissing(o) && (
+                    {o.missingSupplier && (
                       <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                        No {kind === "supplier" ? "supplier bill" : "shipping"} yet
+                        No supplier bill yet
+                      </span>
+                    )}
+                    {o.missingShipping && (
+                      <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                        No shipping yet
                       </span>
                     )}
                     <span className="shrink-0 text-xs text-slate-400">
