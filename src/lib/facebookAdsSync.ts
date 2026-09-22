@@ -43,11 +43,23 @@ async function fetchDailySpend(since: string, until: string): Promise<DailySpend
     try {
       res = await fetch(url);
     } catch {
-      throw new Error("fetch_failed");
+      throw new Error("fetch_failed: network error reaching graph.facebook.com");
     }
-    if (!res.ok) throw new Error("fetch_failed");
 
-    const json = (await res.json()) as GraphInsightsResponse;
+    const json = (await res.json().catch(() => null)) as
+      | (GraphInsightsResponse & {
+          error?: { message?: string; type?: string; code?: number };
+        })
+      | null;
+
+    if (!res.ok) {
+      const metaMessage = json?.error?.message;
+      throw new Error(
+        `fetch_failed: ${metaMessage ?? `HTTP ${res.status}`}`
+      );
+    }
+    if (!json) throw new Error("fetch_failed: couldn't parse Facebook's response");
+
     for (const row of json.data ?? []) {
       if (row.date_start && row.spend != null) {
         results.push({ date: row.date_start, spend: Number(row.spend) });

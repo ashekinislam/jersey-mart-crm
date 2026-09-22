@@ -198,11 +198,15 @@ export async function addAdSpend(input: {
   return { ok: true };
 }
 
-const FB_SYNC_ERRORS: Record<string, string> = {
-  not_configured:
-    "Facebook ad sync isn't set up yet (missing META_ADS_ACCOUNT_ID / META_ADS_ACCESS_TOKEN).",
-  fetch_failed: "Couldn't reach Facebook to fetch spend -- try again shortly.",
-};
+function fbSyncErrorMessage(error: string): string {
+  if (error === "not_configured") {
+    return "Facebook ad sync isn't set up yet (missing META_ADS_ACCOUNT_ID / META_ADS_ACCESS_TOKEN).";
+  }
+  if (error.startsWith("fetch_failed:")) {
+    return `Facebook rejected the request: ${error.slice("fetch_failed:".length).trim()}`;
+  }
+  return "Sync failed -- try again.";
+}
 
 function syncSummary(result: { synced: number; skippedManual: number }): string {
   const skipped =
@@ -222,7 +226,7 @@ export async function syncFacebookAdsRecent(): Promise<ActionResult> {
     until: today,
   });
   if (!result.ok) {
-    return { ok: false, error: FB_SYNC_ERRORS[result.error] ?? "Sync failed -- try again." };
+    return { ok: false, error: fbSyncErrorMessage(result.error) };
   }
   refreshEverything();
   return { ok: true, message: syncSummary(result) };
@@ -237,7 +241,7 @@ export async function backfillFacebookAds(): Promise<ActionResult> {
     until: today,
   });
   if (!result.ok) {
-    return { ok: false, error: FB_SYNC_ERRORS[result.error] ?? "Backfill failed -- try again." };
+    return { ok: false, error: fbSyncErrorMessage(result.error) };
   }
   refreshEverything();
   return { ok: true, message: syncSummary(result) };
