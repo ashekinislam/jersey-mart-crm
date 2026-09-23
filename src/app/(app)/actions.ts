@@ -70,6 +70,7 @@ export async function updateCustomer(customerId: string, formData: FormData) {
   const state = String(formData.get("state") ?? "").trim() || null;
   const fabric_preference =
     String(formData.get("fabric_preference") ?? "").trim() || null;
+  const reckon_alias = String(formData.get("reckon_alias") ?? "").trim() || null;
   const tagsRaw = String(formData.get("tags") ?? "");
   const tags = tagsRaw
     .split(",")
@@ -91,6 +92,7 @@ export async function updateCustomer(customerId: string, formData: FormData) {
       address,
       state,
       fabric_preference,
+      reckon_alias,
       tags,
       updated_at: new Date().toISOString(),
     })

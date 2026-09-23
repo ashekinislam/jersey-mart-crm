@@ -17,6 +17,7 @@ create table if not exists customers (
   status text not null default 'lead'
     check (status in ('lead','potential','active','repeat','inactive')),
   tags text[] not null default '{}',
+  reckon_alias text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

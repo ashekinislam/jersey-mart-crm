@@ -348,11 +348,17 @@ export async function runReckonSync(
     const hint = invoice.customer?.name?.trim();
     if (!hint) continue;
 
+    // Match on the CRM name OR a recorded Reckon-side alias -- some
+    // customers trade under a different name on their invoices than how
+    // they're known here (e.g. a personal name here, a company name there).
+    const escapedHint = hint.replace(/[%,()]/g, "\\$&");
     const { data: matches } = await supabase
       .from("customers")
       .select("id")
       .eq("owner_id", ownerId)
-      .ilike("name", `%${hint}%`);
+      .or(
+        `name.ilike.%${escapedHint}%,reckon_alias.ilike.%${escapedHint}%`
+      );
 
     let payload: AiDraftPayload;
     if (!matches || matches.length === 0) {

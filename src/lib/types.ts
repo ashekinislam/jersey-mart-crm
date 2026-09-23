@@ -58,6 +58,9 @@ export interface Customer {
   fabric_preference: string | null;
   status: CustomerStatus;
   tags: string[];
+  /** How this customer is named on the Reckon side, if different -- checked
+   * during Reckon sync matching alongside their CRM name. */
+  reckon_alias: string | null;
   created_at: string;
   updated_at: string;
 }

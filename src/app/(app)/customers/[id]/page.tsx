@@ -310,6 +310,22 @@ export default async function CustomerDetailPage({
           </div>
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium text-slate-600">
+              Also known as in Reckon (optional)
+            </label>
+            <p className="mt-0.5 text-xs text-slate-400">
+              Set this if their Reckon invoices use a different name (e.g. a
+              company name) than what&rsquo;s here — Reckon sync will match
+              them by either name instead of drafting a duplicate customer.
+            </p>
+            <input
+              name="reckon_alias"
+              defaultValue={c.reckon_alias ?? ""}
+              placeholder="e.g. Pace appointments QLD Pty Ltd"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-medium text-slate-600">
               Tags (comma separated)
             </label>
             <input
