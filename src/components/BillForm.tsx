@@ -154,7 +154,17 @@ export function BillForm({
   }
 
   function toggleOrder(id: string) {
-    setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+    const isRemoving = selected.includes(id);
+    setSelected((cur) => (isRemoving ? cur.filter((x) => x !== id) : [...cur, id]));
+
+    // Ticking a box in manual mode used to leave its amount blank -- which
+    // silently counts as $0 and gets dropped from what's actually saved, so
+    // it looked like the assignment "didn't take". Prefill with whatever's
+    // still unassigned (the whole bill, if this is the first/only order
+    // ticked) so a plain tick-and-save works the way it looks like it should.
+    if (!isRemoving && mode === "manual" && !manual[id]?.trim() && left > 0.004) {
+      setManual((m) => ({ ...m, [id]: left.toFixed(2) }));
+    }
   }
 
   function typeAmount(orderId: string, text: string) {
