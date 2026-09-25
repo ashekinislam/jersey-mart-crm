@@ -197,22 +197,6 @@ export default async function CostsPage({
         <CostsByMonthTable rows={monthRows} total={summary} />
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="text-sm font-semibold text-slate-900">Facebook ad charges</h2>
-        <p className="mt-1 text-xs text-slate-500">
-          Type the amount and press Enter — it clears ready for the next charge.
-          Or pull real spend straight from Facebook below (never overwrites a
-          charge you&rsquo;ve entered by hand).
-        </p>
-        <div className="mt-3">
-          <AdSpendQuickAdd today={today} />
-        </div>
-        <div className="mt-3">
-          <FacebookAdsSyncButtons />
-        </div>
-        <AdSpendList ads={monthAds} monthLabel={monthLabel(month)} />
-      </section>
-
       <section id="add-bill" className="rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-slate-900">Add a bill</h2>
         <p className="mt-1 text-xs text-slate-500">
@@ -290,6 +274,22 @@ export default async function CostsPage({
               : `No ${tabInfo.plural} entered yet.`
           }
         />
+      </section>
+
+      <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-slate-900">Facebook ad charges</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Type the amount and press Enter — it clears ready for the next charge.
+          Or pull real spend straight from Facebook below (never overwrites a
+          charge you&rsquo;ve entered by hand).
+        </p>
+        <div className="mt-3">
+          <AdSpendQuickAdd today={today} />
+        </div>
+        <div className="mt-3">
+          <FacebookAdsSyncButtons />
+        </div>
+        <AdSpendList ads={monthAds} monthLabel={monthLabel(month)} />
       </section>
     </div>
   );

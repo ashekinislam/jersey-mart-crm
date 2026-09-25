@@ -20,11 +20,13 @@ export function AdSpendList({ ads, monthLabel }: { ads: Expense[]; monthLabel: s
   const monthTotal = cents(ads.reduce((s, a) => s + a.amount, 0));
 
   return (
-    <div className="mt-3">
-      <p className="text-sm text-slate-600">
+    <details className="mt-3 group">
+      <summary className="cursor-pointer list-none text-sm text-slate-600">
+        <span className="mr-1 inline-block transition-transform group-open:rotate-90">▸</span>
         {monthLabel} so far: <span className="font-semibold text-slate-900">{fmt(monthTotal)}</span> across{" "}
         {ads.length} charge{ads.length === 1 ? "" : "s"}
-      </p>
+        <span className="ml-1 text-xs text-slate-400 group-open:hidden">(click to see days)</span>
+      </summary>
       <ul className="mt-2 divide-y divide-slate-100">
         {days.map(([day, charges]) => (
           <li key={day} className="flex flex-wrap items-center justify-between gap-2 py-1.5 text-sm">
@@ -52,6 +54,6 @@ export function AdSpendList({ ads, monthLabel }: { ads: Expense[]; monthLabel: s
           </li>
         ))}
       </ul>
-    </div>
+    </details>
   );
 }

@@ -1,15 +1,22 @@
+"use client";
+
+import { useState } from "react";
 import { monthLabel, type PeriodSummary } from "@/lib/costs";
 
 const fmt = (n: number) => n.toLocaleString("en-AU", { style: "currency", currency: "AUD" });
 
 const cell = "px-3 py-1.5 text-right tabular-nums whitespace-nowrap";
 
+const DEFAULT_VISIBLE_MONTHS = 12;
+
 function Money({ value }: { value: number }) {
   return <span className={value < 0 ? "text-red-600" : undefined}>{fmt(value)}</span>;
 }
 
 /** The period broken down month by month (newest first), with a totals row.
- * Only worth showing when the period covers more than one month. */
+ * Only worth showing when the period covers more than one month. Caps to the
+ * most recent year by default -- a "show all" toggle reveals the rest, so
+ * this doesn't just grow forever as years of history pile up. */
 export function CostsByMonthTable({
   rows,
   total,
@@ -17,11 +24,26 @@ export function CostsByMonthTable({
   rows: { month: string; summary: PeriodSummary }[];
   total: PeriodSummary;
 }) {
+  const [expanded, setExpanded] = useState(false);
   if (rows.length < 2) return null;
+
+  const hasMore = rows.length > DEFAULT_VISIBLE_MONTHS;
+  const visibleRows = expanded ? rows : rows.slice(0, DEFAULT_VISIBLE_MONTHS);
 
   return (
     <div className="mt-5">
-      <h3 className="text-sm font-semibold text-slate-900">Month by month</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-900">Month by month</h3>
+        {hasMore && (
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            className="text-xs text-slate-500 underline hover:text-slate-800"
+          >
+            {expanded ? "Show recent 12 months" : `Show all ${rows.length} months`}
+          </button>
+        )}
+      </div>
       <div className="mt-2 overflow-x-auto rounded-md border border-slate-200">
         <table className="w-full min-w-[40rem] text-sm">
           <thead className="bg-slate-50 text-xs text-slate-500">
@@ -53,7 +75,7 @@ export function CostsByMonthTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {rows.map(({ month, summary: s }) => (
+            {visibleRows.map(({ month, summary: s }) => (
               <tr key={month}>
                 <th scope="row" className="px-3 py-1.5 text-left font-normal text-slate-700 whitespace-nowrap">
                   {monthLabel(month)}

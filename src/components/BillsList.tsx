@@ -74,6 +74,8 @@ function PaidControl({ bill }: { bill: BillRow }) {
   );
 }
 
+const DEFAULT_VISIBLE_BILLS = 10;
+
 export function BillsList({
   bills,
   orders,
@@ -86,15 +88,19 @@ export function BillsList({
   emptyText?: string;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const orderById = new Map(orders.map((o) => [o.id, o]));
 
   if (bills.length === 0) {
     return <p className="mt-3 text-sm text-slate-500">{emptyText}</p>;
   }
 
+  const hasMore = bills.length > DEFAULT_VISIBLE_BILLS;
+  const visibleBills = expanded ? bills : bills.slice(0, DEFAULT_VISIBLE_BILLS);
+
   return (
     <div className="mt-3 divide-y divide-slate-200">
-      {bills.map((bill) => {
+      {visibleBills.map((bill) => {
         const assigned = cents(bill.allocations.reduce((s, a) => s + a.amount, 0));
         const unassigned = cents(bill.amount - assigned);
         const perOrder = bill.kind === "supplier" || bill.kind === "shipping";
@@ -187,6 +193,19 @@ export function BillsList({
           </div>
         );
       })}
+      {hasMore && (
+        <div className="pt-3 text-center">
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            className="text-xs text-slate-500 underline hover:text-slate-800"
+          >
+            {expanded
+              ? "Show fewer"
+              : `Show all ${bills.length} (${bills.length - DEFAULT_VISIBLE_BILLS} more)`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
