@@ -6,6 +6,7 @@ import {
   cents,
   expectsCosts,
   inMonth,
+  inRange,
   monthBreakdown,
   monthLabel,
   periodPresets,
@@ -124,7 +125,12 @@ export default async function CostsPage({
     ]);
   }
 
-  const billsOfKind = (kind: BillKind) => expenses.filter((e) => e.kind === kind);
+  // Scoped to the same period as the Profit summary above, by the bill's own
+  // date -- so picking "August 2026" (or a financial year, or a custom range)
+  // up there narrows the Bills list to match, instead of it always showing
+  // every bill ever entered.
+  const billsOfKind = (kind: BillKind) =>
+    expenses.filter((e) => e.kind === kind && inRange(e.expense_date, chosen.period));
   const unpaidOf = (list: Expense[]) => list.filter((e) => e.paid_date == null);
   const tabBills = billsOfKind(tab);
   const tabUnpaid = unpaidOf(tabBills);
@@ -138,6 +144,13 @@ export default async function CostsPage({
   });
   const billsHref = (kind: BillKind, unpaidOnly: boolean) =>
     `/costs?${new URLSearchParams({ ...periodParams(), tab: kind, ...(unpaidOnly ? { show: "unpaid" } : {}) })}#bills`;
+  const billsAllTimeHref = () =>
+    `/costs?${new URLSearchParams({
+      period: "all",
+      month,
+      tab,
+      ...(showUnpaid ? { show: "unpaid" } : {}),
+    })}#bills`;
   const profitHref = (choice: { period: PeriodKind; from?: string; to?: string }) =>
     `/costs?${new URLSearchParams({
       month,
@@ -213,7 +226,24 @@ export default async function CostsPage({
       </section>
 
       <section id="bills" className="rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="text-sm font-semibold text-slate-900">Bills</h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h2 className="text-sm font-semibold text-slate-900">
+            Bills — {chosen.label}
+          </h2>
+          {chosen.kind !== "all" && (
+            <Link
+              href={billsAllTimeHref()}
+              className="text-xs text-slate-500 hover:underline"
+            >
+              Show bills from all time instead
+            </Link>
+          )}
+        </div>
+        <p className="mt-1 text-xs text-slate-400">
+          Using the same period as the Profit summary above — change it there
+          (Month / All time / Custom dates) to see bills from a different
+          stretch.
+        </p>
 
         <nav aria-label="Kind of bill" className="mt-3 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
           {BILL_TABS.map((t) => {
