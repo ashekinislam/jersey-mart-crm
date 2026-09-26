@@ -26,10 +26,11 @@ export async function startVideoRender(
     imageFormat: "jpeg",
     maxRetries: 1,
     privacy: "public",
-    // A brand-new AWS account has a low concurrent-Lambda-invocation quota;
-    // keep this well under it rather than hitting a rate-limit error.
+    // A brand-new AWS account's concurrent-Lambda-invocation quota can be
+    // very low (even 3 hit "Rate Exceeded" once) -- render fully serially
+    // until an AWS quota increase is requested.
     // See https://www.remotion.dev/docs/lambda/troubleshooting/rate-limit
-    concurrency: 3,
+    concurrency: 1,
   });
   return { renderId, bucketName };
 }
