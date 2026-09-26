@@ -68,6 +68,28 @@ async function publishInstagramReel(creationId: string): Promise<string> {
   return json.id;
 }
 
+export async function deleteFacebookPost(postId: string): Promise<void> {
+  const { accessToken } = config();
+  try {
+    await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${postId}?access_token=${accessToken}`, {
+      method: "DELETE",
+    });
+  } catch {
+    // best-effort -- the CRM record still gets removed even if this fails
+  }
+}
+
+export async function deleteInstagramMedia(mediaId: string): Promise<void> {
+  const { accessToken } = config();
+  try {
+    await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${mediaId}?access_token=${accessToken}`, {
+      method: "DELETE",
+    });
+  } catch {
+    // best-effort -- the CRM record still gets removed even if this fails
+  }
+}
+
 /** Instagram processes the uploaded video asynchronously before it can be
  * published. Polls briefly and publishes once ready; returns null (not an
  * error) if it's still processing after `maxAttempts` -- the caller can

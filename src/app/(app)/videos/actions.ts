@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "@/lib/costs";
 import type { VideoType } from "@/lib/types";
 import { runGenerateBrandPhotos, runGenerateVideo, runCheckVideoRender, runPostGeneratedVideo } from "@/lib/videoPipeline";
+import { deleteFacebookPost, deleteInstagramMedia } from "@/lib/metaPublish";
 
 const VIDEO_TYPES = new Set(["product_showcase", "educational", "service_promo"]);
 
@@ -128,17 +129,24 @@ export async function refreshVideoStatus(videoId: string): Promise<ActionResult>
   return result;
 }
 
+/** Deletes the CRM record and its voiceover file, and -- if it was already
+ * posted -- removes the actual Facebook post and Instagram media too, so
+ * "delete" really means gone, not just hidden from this list. */
 export async function deleteGeneratedVideo(videoId: string): Promise<ActionResult> {
   const { supabase } = await requireUser();
   const { data: video } = await supabase
     .from("generated_videos")
-    .select("voiceover_storage_path")
+    .select("voiceover_storage_path, fb_post_id, ig_media_id")
     .eq("id", videoId)
     .single();
 
   if (video?.voiceover_storage_path) {
     await supabase.storage.from("voiceovers").remove([video.voiceover_storage_path]);
   }
+  await Promise.all([
+    video?.fb_post_id ? deleteFacebookPost(video.fb_post_id) : Promise.resolve(),
+    video?.ig_media_id ? deleteInstagramMedia(video.ig_media_id) : Promise.resolve(),
+  ]);
   await supabase.from("generated_videos").delete().eq("id", videoId);
 
   revalidatePath("/videos");

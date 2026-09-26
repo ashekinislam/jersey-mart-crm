@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { brisbaneToday, inRange, periodPresets, resolvePeriod, type PeriodKind } from "@/lib/costs";
 import type { GeneratedVideo, VideoBrandAsset } from "@/lib/types";
 import { BrandAssetsSection } from "@/components/BrandAssetsSection";
 import { VideoGeneratorForm } from "@/components/VideoGeneratorForm";
@@ -16,12 +17,20 @@ type DesignJoinRow = {
   teams: { team_name: string; orders: { customers: { name: string } | null } | null } | null;
 };
 
-export default async function VideosPage() {
+export default async function VideosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string; month?: string; from?: string; to?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const sp = await searchParams;
+  const today = brisbaneToday();
+  const chosen = resolvePeriod(sp, today);
 
   const [{ data: brandAssets }, { data: designs }, { data: videos }] = await Promise.all([
     supabase
@@ -71,6 +80,15 @@ export default async function VideosPage() {
     .filter((a: VideoBrandAsset) => a.kind === "logo")
     .map((a: VideoBrandAsset) => ({ id: a.id, url: brandUrlByPath.get(a.storage_path) ?? null, caption: a.caption ?? "Logo" }));
 
+  const videosInPeriod = ((videos ?? []) as GeneratedVideo[]).filter((v) => inRange(v.created_at.slice(0, 10), chosen.period));
+
+  const videosHref = (choice: { period: PeriodKind; from?: string; to?: string }) =>
+    `/videos?${new URLSearchParams({
+      month: chosen.month,
+      period: choice.period,
+      ...(choice.period === "custom" ? { from: choice.from ?? chosen.from, to: choice.to ?? chosen.to } : {}),
+    })}`;
+
   return (
     <div className="space-y-6">
       <div>
@@ -87,7 +105,16 @@ export default async function VideosPage() {
 
       <VideoGeneratorForm designOptions={designOptions} brandPhotoOptions={brandPhotoOptions} logoOptions={logoOptions} />
 
-      <GeneratedVideosList videos={(videos ?? []) as GeneratedVideo[]} />
+      <GeneratedVideosList
+        videos={videosInPeriod}
+        periodKind={chosen.kind}
+        periodMonth={chosen.month}
+        periodFrom={chosen.from}
+        periodTo={chosen.to}
+        periodLabel={chosen.label}
+        presets={periodPresets(today)}
+        hrefFor={videosHref}
+      />
     </div>
   );
 }
