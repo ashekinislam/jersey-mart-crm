@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { deleteGeneratedVideo, refreshVideoStatus } from "@/app/(app)/videos/actions";
+import { deleteGeneratedVideo, postGeneratedVideo, refreshVideoStatus } from "@/app/(app)/videos/actions";
 import { VIDEO_STATUS_LABELS, VIDEO_TYPE_LABELS, type GeneratedVideo } from "@/lib/types";
 import { useToast } from "@/components/ToastProvider";
 
@@ -38,6 +38,13 @@ function VideoCard({ video }: { video: GeneratedVideo }) {
     });
   }
 
+  function post() {
+    startTransition(async () => {
+      const result = await postGeneratedVideo(video.id);
+      showToast(result.ok ? (result.message ?? "Posted") : result.error, result.ok ? "success" : "error");
+    });
+  }
+
   function del() {
     if (!window.confirm("Delete this video?")) return;
     startTransition(async () => {
@@ -60,6 +67,11 @@ function VideoCard({ video }: { video: GeneratedVideo }) {
           {video.status === "rendering" && (
             <button type="button" disabled={isPending} onClick={refresh} className="text-xs text-slate-500 underline hover:text-slate-800 disabled:opacity-50">
               {isPending ? "Checking…" : "Check status"}
+            </button>
+          )}
+          {video.status === "ready" && (
+            <button type="button" disabled={isPending} onClick={post} className="text-xs font-medium text-emerald-700 underline hover:text-emerald-900 disabled:opacity-50">
+              {isPending ? "Posting…" : "Post now"}
             </button>
           )}
           <button type="button" disabled={isPending} onClick={del} className="text-xs text-slate-400 hover:text-red-600 disabled:opacity-50">

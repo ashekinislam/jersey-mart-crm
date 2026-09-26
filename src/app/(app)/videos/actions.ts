@@ -9,6 +9,7 @@ import { generateVideoScript } from "@/lib/videoScript";
 import { synthesizeVoiceover } from "@/lib/tts";
 import { startVideoRender, checkVideoRender } from "@/lib/remotionRender";
 import { generateProductPhoto } from "@/lib/imageGen";
+import { postVideoToFacebookPage, startInstagramReel, waitAndPublishInstagram } from "@/lib/metaPublish";
 
 const VIDEO_TYPES = new Set(["product_showcase", "educational", "service_promo"]);
 const SIGNED_URL_SECONDS = 6 * 60 * 60;
@@ -345,4 +346,61 @@ export async function deleteGeneratedVideo(videoId: string): Promise<ActionResul
 
   revalidatePath("/videos");
   return { ok: true };
+}
+
+/** Posts a ready video to Jersey Mart's own Facebook Page and Instagram
+ * account. Safe to call again if Instagram was still processing last time
+ * -- it reuses the Facebook post and Instagram upload it already made
+ * rather than posting duplicates. */
+export async function postGeneratedVideo(videoId: string): Promise<ActionResult> {
+  const { supabase } = await requireUser();
+  const { data: video } = await supabase
+    .from("generated_videos")
+    .select("status, output_url, script, fb_post_id, ig_creation_id")
+    .eq("id", videoId)
+    .single();
+
+  if (!video) return { ok: false, error: "Video not found." };
+  if (video.status !== "ready" || !video.output_url) {
+    return { ok: false, error: "This video isn't ready to post yet." };
+  }
+
+  let headline = "Jersey Mart";
+  let lines: string[] = [];
+  try {
+    const parsed = video.script ? (JSON.parse(video.script) as { headline: string; lines: string[] }) : null;
+    if (parsed) {
+      headline = parsed.headline;
+      lines = parsed.lines;
+    }
+  } catch {
+    // fall back to the defaults above
+  }
+  const caption = `${headline}\n\n${lines.join(" ")}\n\n#JerseyMart #CustomJerseys #TeamWear`;
+
+  try {
+    const fbPostId = video.fb_post_id ?? (await postVideoToFacebookPage(video.output_url, caption));
+    const igCreationId = video.ig_creation_id ?? (await startInstagramReel(video.output_url, caption));
+    const igMediaId = await waitAndPublishInstagram(igCreationId);
+
+    await supabase
+      .from("generated_videos")
+      .update({
+        fb_post_id: fbPostId,
+        ig_creation_id: igCreationId,
+        ig_media_id: igMediaId,
+        status: igMediaId ? "posted" : "ready",
+        posted_at: igMediaId ? new Date().toISOString() : null,
+        error_message: igMediaId ? null : "Posted to Facebook; Instagram is still processing -- try posting again shortly.",
+      })
+      .eq("id", videoId);
+
+    revalidatePath("/videos");
+    if (!igMediaId) {
+      return { ok: true, message: "Posted to Facebook. Instagram is still processing -- try again in a minute." };
+    }
+    return { ok: true, message: "Posted to Facebook and Instagram!" };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Something went wrong." };
+  }
 }

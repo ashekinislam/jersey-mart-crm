@@ -355,6 +355,9 @@ create table if not exists generated_videos (
   render_bucket_name text,
   output_url text,
   error_message text,
+  fb_post_id text,
+  ig_creation_id text,
+  ig_media_id text,
   posted_at timestamptz,
   created_at timestamptz not null default now()
 );

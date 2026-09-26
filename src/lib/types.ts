@@ -600,6 +600,9 @@ export interface GeneratedVideo {
   render_bucket_name: string | null;
   output_url: string | null;
   error_message: string | null;
+  fb_post_id: string | null;
+  ig_creation_id: string | null;
+  ig_media_id: string | null;
   posted_at: string | null;
   created_at: string;
 }
