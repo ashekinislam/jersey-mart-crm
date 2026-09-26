@@ -5,8 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "@/lib/costs";
 import type { VideoType } from "@/lib/types";
-import { generateProductPhoto } from "@/lib/imageGen";
-import { runGenerateVideo, runCheckVideoRender, runPostGeneratedVideo } from "@/lib/videoPipeline";
+import { runGenerateBrandPhotos, runGenerateVideo, runCheckVideoRender, runPostGeneratedVideo } from "@/lib/videoPipeline";
 
 const VIDEO_TYPES = new Set(["product_showcase", "educational", "service_promo"]);
 
@@ -78,83 +77,14 @@ interface GenerateBrandPhotosInput {
  * The results are saved as ordinary brand assets, pickable for videos just
  * like any uploaded photo. */
 export async function generateBrandPhotos(input: GenerateBrandPhotosInput): Promise<ActionResult> {
-  const prompt = input.prompt.trim();
-  if (!prompt) return { ok: false, error: "Describe what kind of photo to generate." };
   const refCount = input.referenceDesignIds.length + input.referenceBrandAssetIds.length;
   if (refCount === 0) return { ok: false, error: "Pick at least one reference photo." };
   if (refCount > 4) return { ok: false, error: "Pick 4 reference photos or fewer." };
-  const count = Math.min(Math.max(Math.round(input.count), 1), 4);
 
   const { supabase, user } = await requireUser();
-
-  try {
-    const [{ data: designs }, { data: brandAssets }] = await Promise.all([
-      input.referenceDesignIds.length
-        ? supabase.from("designs").select("id, storage_path").in("id", input.referenceDesignIds)
-        : Promise.resolve({ data: [] as { id: string; storage_path: string }[] }),
-      input.referenceBrandAssetIds.length
-        ? supabase.from("video_brand_assets").select("id, storage_path").in("id", input.referenceBrandAssetIds)
-        : Promise.resolve({ data: [] as { id: string; storage_path: string }[] }),
-    ]);
-
-    const designPaths = (designs ?? []).map((d) => d.storage_path);
-    const brandPaths = (brandAssets ?? []).map((a) => a.storage_path);
-
-    const [designUrls, brandUrls] = await Promise.all([
-      designPaths.length
-        ? supabase.storage.from("designs").createSignedUrls(designPaths, 600)
-        : Promise.resolve({ data: [] }),
-      brandPaths.length
-        ? supabase.storage.from("brand-assets").createSignedUrls(brandPaths, 600)
-        : Promise.resolve({ data: [] }),
-    ]);
-
-    const signedUrls = [...(designUrls.data ?? []), ...(brandUrls.data ?? [])]
-      .map((u) => u.signedUrl)
-      .filter((u): u is string => typeof u === "string");
-    if (signedUrls.length === 0) return { ok: false, error: "Couldn't load the reference photos." };
-
-    const referenceImages = await Promise.all(
-      signedUrls.map(async (url) => {
-        const res = await fetch(url);
-        const contentType = res.headers.get("content-type") ?? "image/jpeg";
-        const bytes = Buffer.from(await res.arrayBuffer());
-        return { bytes, contentType };
-      })
-    );
-
-    const results = await Promise.allSettled(
-      Array.from({ length: count }, () => generateProductPhoto(referenceImages, prompt))
-    );
-
-    let saved = 0;
-    for (const result of results) {
-      if (result.status !== "fulfilled") continue;
-      const storagePath = `${user.id}/photo/${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
-      const { error } = await supabase.storage
-        .from("brand-assets")
-        .upload(storagePath, result.value, { contentType: "image/png" });
-      if (error) continue;
-      await supabase.from("video_brand_assets").insert({
-        owner_id: user.id,
-        kind: "photo",
-        storage_path: storagePath,
-        caption: prompt.slice(0, 200),
-        generation_prompt: prompt,
-      });
-      saved++;
-    }
-
-    revalidatePath("/videos");
-    if (saved === 0) {
-      const firstError = results.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
-      const message = firstError?.reason instanceof Error ? firstError.reason.message : "All generations failed.";
-      return { ok: false, error: message };
-    }
-    return { ok: true, message: `Generated ${saved} photo${saved === 1 ? "" : "s"}.` };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Something went wrong." };
-  }
+  const result = await runGenerateBrandPhotos(supabase, user.id, input);
+  revalidatePath("/videos");
+  return result;
 }
 
 // ---- Video generation ---------------------------------------------------

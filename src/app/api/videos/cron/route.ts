@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { brisbaneToday } from "@/lib/costs";
 import type { VideoType } from "@/lib/types";
-import { runCheckVideoRender, runGenerateVideo, runPostGeneratedVideo } from "@/lib/videoPipeline";
+import { runCheckVideoRender, runGenerateBrandPhotos, runGenerateVideo, runPostGeneratedVideo } from "@/lib/videoPipeline";
 
 export const maxDuration = 60;
 
@@ -11,6 +11,17 @@ const VIDEO_TYPES: VideoType[] = ["product_showcase", "educational", "service_pr
 /** How many new photo-scenes to include if there's no prior video to rotate
  * against -- keeps a fresh auto-generated video to a sensible length. */
 const SCENES_PER_VIDEO = 5;
+
+/** Rotated through so the AI photo pool doesn't turn into the same shot
+ * over and over. Always describes a NEW scene for an EXISTING real jersey
+ * (the reference photo), never a new product design. */
+const PHOTO_SCENE_PROMPTS = [
+  "this jersey being worn by a player mid-action on an outdoor sports field, natural daylight, dynamic pose",
+  "this jersey on a mannequin in a clean studio setting, soft even lighting, product-catalogue style",
+  "a close-up detail shot of this jersey's fabric and stitching, natural light, shallow depth of field",
+  "this jersey folded neatly on a wooden table next to a ball from its sport, warm natural light",
+  "a team huddled together wearing this jersey on a grass field at golden hour",
+];
 
 function brisbaneDateOf(iso: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Brisbane" }).format(new Date(iso));
@@ -79,6 +90,22 @@ export async function GET(request: NextRequest) {
     .eq("stage", "machine_ready")
     .eq("status", "approved")
     .order("created_at", { ascending: true });
+
+  // Keep a steady supply of fresh AI product photos -- always guided by a
+  // real (never AI-generated) Design photo, so quality doesn't drift over
+  // repeated generations. Best-effort: a failure here shouldn't block
+  // today's video.
+  if (designs && designs.length > 0) {
+    const referenceDesign = designs[designs.length - 1];
+    const scenePrompt = PHOTO_SCENE_PROMPTS[(totalVideos ?? 0) % PHOTO_SCENE_PROMPTS.length];
+    const photoResult = await runGenerateBrandPhotos(supabase, OWNER_ID, {
+      referenceDesignIds: [referenceDesign.id],
+      referenceBrandAssetIds: [],
+      prompt: scenePrompt,
+      count: 1,
+    });
+    log.push(`photo gen: ${photoResult.ok ? photoResult.message : photoResult.error}`);
+  }
 
   const { data: brandAssets } = await supabase
     .from("video_brand_assets")
