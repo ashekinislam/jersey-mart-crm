@@ -7,6 +7,10 @@
     {
       "path": "/api/facebook-ads/cron",
       "schedule": "15 20 * * *"
+    },
+    {
+      "path": "/api/videos/cron",
+      "schedule": "0 2 * * *"
     }
   ]
 }
