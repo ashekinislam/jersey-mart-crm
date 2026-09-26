@@ -37,8 +37,11 @@ function sceneDurationsInFrames(scenes: { caption: string }[], middleSeconds: nu
 
 export const calculateMetadata = async ({ props }: { props: ProductShowcaseProps }) => {
   const audioDurationSeconds = await getAudioDurationInSeconds(props.voiceoverUrl);
-  const totalSeconds = Math.max(audioDurationSeconds + 0.6, INTRO_SECONDS + OUTRO_SECONDS + 2);
-  const middleSeconds = totalSeconds - INTRO_SECONDS - OUTRO_SECONDS;
+  // The scenes get the full narration length (plus a floor so even a very
+  // short script still gives each photo a readable moment on screen) --
+  // intro/outro are added on top of that, not carved out of it.
+  const middleSeconds = Math.max(audioDurationSeconds + 0.6, props.scenes.length * 1.5);
+  const totalSeconds = INTRO_SECONDS + middleSeconds + OUTRO_SECONDS;
   const durations = sceneDurationsInFrames(props.scenes, middleSeconds);
   const durationInFrames = Math.round(totalSeconds * FPS);
   return { durationInFrames, fps: FPS, width: 1080, height: 1920, props: { ...props, _sceneDurations: durations } };
@@ -106,7 +109,9 @@ export function ProductShowcase(
 
   return (
     <AbsoluteFill style={{ backgroundColor: "black" }}>
-      <Audio src={voiceoverUrl} />
+      <Sequence from={introFrames}>
+        <Audio src={voiceoverUrl} />
+      </Sequence>
       <Sequence from={0} durationInFrames={introFrames}>
         <TitleCard brandName={brandName} headline={headline} logoUrl={logoUrl} />
       </Sequence>
