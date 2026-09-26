@@ -63,6 +63,23 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // A video that posted to Facebook but was still waiting on Instagram to
+  // finish processing (e.g. because the 30s poll window ran out) has no
+  // running render to re-check -- retry publishing it directly instead of
+  // leaving it stuck.
+  const { data: pendingInstagram } = await supabase
+    .from("generated_videos")
+    .select("id, status, output_url, script, fb_post_id, ig_creation_id")
+    .eq("owner_id", OWNER_ID)
+    .eq("status", "ready")
+    .not("fb_post_id", "is", null)
+    .is("ig_media_id", null);
+
+  for (const video of pendingInstagram ?? []) {
+    const posted = await runPostGeneratedVideo(supabase, video);
+    log.push(`retry instagram ${video.id}: ${posted.ok ? posted.message : posted.error}`);
+  }
+
   const { data: latest } = await supabase
     .from("generated_videos")
     .select("created_at")
