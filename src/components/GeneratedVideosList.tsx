@@ -2,9 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { deleteGeneratedVideo, postGeneratedVideo, refreshVideoStatus } from "@/app/(app)/videos/actions";
-import type { PeriodKind } from "@/lib/costs";
 import { VIDEO_STATUS_LABELS, VIDEO_TYPE_LABELS, type GeneratedVideo } from "@/lib/types";
-import { CostsPeriodPicker } from "@/components/CostsPeriodPicker";
 import { useToast } from "@/components/ToastProvider";
 
 const DEFAULT_VISIBLE_VIDEOS = 10;
@@ -107,57 +105,36 @@ function VideoCard({ video }: { video: GeneratedVideo }) {
   );
 }
 
-export function GeneratedVideosList({
-  videos,
-  periodKind,
-  periodMonth,
-  periodFrom,
-  periodTo,
-  periodLabel,
-  presets,
-  hrefFor,
-}: {
-  videos: GeneratedVideo[];
-  periodKind: PeriodKind;
-  periodMonth: string;
-  periodFrom: string;
-  periodTo: string;
-  periodLabel: string;
-  presets: { label: string; from: string; to: string }[];
-  hrefFor: (choice: { period: PeriodKind; from?: string; to?: string }) => string;
-}) {
+/** Renders just the video cards (+ show-more cap) -- the heading and period
+ * picker live in the server-rendered page around this, since a function
+ * prop like `hrefFor` can't cross into a Client Component. */
+export function GeneratedVideosList({ videos }: { videos: GeneratedVideo[] }) {
   const [expanded, setExpanded] = useState(false);
   const hasMore = videos.length > DEFAULT_VISIBLE_VIDEOS;
   const visibleVideos = expanded ? videos : videos.slice(0, DEFAULT_VISIBLE_VIDEOS);
 
+  if (videos.length === 0) {
+    return <p className="mt-3 text-sm text-slate-500">No videos in this period.</p>;
+  }
+
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4">
-      <h2 className="text-sm font-semibold text-slate-900">Generated videos — {periodLabel}</h2>
-      <div className="mt-2">
-        <CostsPeriodPicker kind={periodKind} month={periodMonth} from={periodFrom} to={periodTo} presets={presets} hrefFor={hrefFor} carry={{}} />
+    <>
+      <div className="mt-3 space-y-3">
+        {visibleVideos.map((v) => (
+          <VideoCard key={v.id} video={v} />
+        ))}
       </div>
-      {videos.length === 0 ? (
-        <p className="mt-3 text-sm text-slate-500">No videos in this period.</p>
-      ) : (
-        <>
-          <div className="mt-3 space-y-3">
-            {visibleVideos.map((v) => (
-              <VideoCard key={v.id} video={v} />
-            ))}
-          </div>
-          {hasMore && (
-            <div className="pt-3 text-center">
-              <button
-                type="button"
-                onClick={() => setExpanded((e) => !e)}
-                className="text-xs text-slate-500 underline hover:text-slate-800"
-              >
-                {expanded ? "Show fewer" : `Show all ${videos.length} (${videos.length - DEFAULT_VISIBLE_VIDEOS} more)`}
-              </button>
-            </div>
-          )}
-        </>
+      {hasMore && (
+        <div className="pt-3 text-center">
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            className="text-xs text-slate-500 underline hover:text-slate-800"
+          >
+            {expanded ? "Show fewer" : `Show all ${videos.length} (${videos.length - DEFAULT_VISIBLE_VIDEOS} more)`}
+          </button>
+        </div>
       )}
-    </section>
+    </>
   );
 }

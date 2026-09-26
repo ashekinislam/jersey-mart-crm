@@ -6,6 +6,7 @@ import { BrandAssetsSection } from "@/components/BrandAssetsSection";
 import { VideoGeneratorForm } from "@/components/VideoGeneratorForm";
 import { AIPhotoGeneratorForm } from "@/components/AIPhotoGeneratorForm";
 import { GeneratedVideosList } from "@/components/GeneratedVideosList";
+import { CostsPeriodPicker } from "@/components/CostsPeriodPicker";
 import type { DesignOption } from "@/components/PhotoCheckbox";
 
 export const maxDuration = 60;
@@ -105,16 +106,21 @@ export default async function VideosPage({
 
       <VideoGeneratorForm designOptions={designOptions} brandPhotoOptions={brandPhotoOptions} logoOptions={logoOptions} />
 
-      <GeneratedVideosList
-        videos={videosInPeriod}
-        periodKind={chosen.kind}
-        periodMonth={chosen.month}
-        periodFrom={chosen.from}
-        periodTo={chosen.to}
-        periodLabel={chosen.label}
-        presets={periodPresets(today)}
-        hrefFor={videosHref}
-      />
+      <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-slate-900">Generated videos — {chosen.label}</h2>
+        <div className="mt-2">
+          <CostsPeriodPicker
+            kind={chosen.kind}
+            month={chosen.month}
+            from={chosen.from}
+            to={chosen.to}
+            presets={periodPresets(today)}
+            hrefFor={videosHref}
+            carry={{}}
+          />
+        </div>
+        <GeneratedVideosList videos={videosInPeriod} />
+      </section>
     </div>
   );
 }
