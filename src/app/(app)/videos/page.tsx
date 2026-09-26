@@ -2,8 +2,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { GeneratedVideo, VideoBrandAsset } from "@/lib/types";
 import { BrandAssetsSection } from "@/components/BrandAssetsSection";
-import { VideoGeneratorForm, type DesignOption } from "@/components/VideoGeneratorForm";
+import { VideoGeneratorForm } from "@/components/VideoGeneratorForm";
+import { AIPhotoGeneratorForm } from "@/components/AIPhotoGeneratorForm";
 import { GeneratedVideosList } from "@/components/GeneratedVideosList";
+import type { DesignOption } from "@/components/PhotoCheckbox";
 
 export const maxDuration = 60;
 
@@ -61,6 +63,14 @@ export default async function VideosPage() {
     caption: d.label || [d.teams?.orders?.customers?.name, d.teams?.team_name].filter(Boolean).join(" — ") || "Untitled",
   }));
 
+  const brandPhotoOptions: DesignOption[] = (brandAssets ?? [])
+    .filter((a: VideoBrandAsset) => a.kind === "photo")
+    .map((a: VideoBrandAsset) => ({ id: a.id, url: brandUrlByPath.get(a.storage_path) ?? null, caption: a.caption ?? "Brand photo" }));
+
+  const logoOptions: DesignOption[] = (brandAssets ?? [])
+    .filter((a: VideoBrandAsset) => a.kind === "logo")
+    .map((a: VideoBrandAsset) => ({ id: a.id, url: brandUrlByPath.get(a.storage_path) ?? null, caption: a.caption ?? "Logo" }));
+
   return (
     <div className="space-y-6">
       <div>
@@ -73,15 +83,9 @@ export default async function VideosPage() {
 
       <BrandAssetsSection assets={(brandAssets ?? []) as VideoBrandAsset[]} urls={Object.fromEntries(brandUrlByPath)} />
 
-      <VideoGeneratorForm
-        designOptions={designOptions}
-        brandPhotoOptions={(brandAssets ?? [])
-          .filter((a: VideoBrandAsset) => a.kind === "photo")
-          .map((a: VideoBrandAsset) => ({ id: a.id, url: brandUrlByPath.get(a.storage_path) ?? null, caption: a.caption ?? "Brand photo" }))}
-        logoOptions={(brandAssets ?? [])
-          .filter((a: VideoBrandAsset) => a.kind === "logo")
-          .map((a: VideoBrandAsset) => ({ id: a.id, url: brandUrlByPath.get(a.storage_path) ?? null, caption: a.caption ?? "Logo" }))}
-      />
+      <AIPhotoGeneratorForm designOptions={designOptions} brandPhotoOptions={brandPhotoOptions} />
+
+      <VideoGeneratorForm designOptions={designOptions} brandPhotoOptions={brandPhotoOptions} logoOptions={logoOptions} />
 
       <GeneratedVideosList videos={(videos ?? []) as GeneratedVideo[]} />
     </div>

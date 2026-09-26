@@ -72,7 +72,7 @@ export function BrandAssetsSection({ assets, urls }: { assets: VideoBrandAsset[]
               )}
               <DeleteAssetButton id={a.id} />
               <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1 text-[10px] text-white">
-                {a.kind === "logo" ? "Logo" : "Photo"}
+                {a.kind === "logo" ? "Logo" : a.generation_prompt ? "AI photo" : "Photo"}
               </span>
             </div>
           );

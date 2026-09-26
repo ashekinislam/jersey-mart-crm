@@ -334,6 +334,8 @@ create table if not exists video_brand_assets (
   kind text not null check (kind in ('photo', 'logo')),
   storage_path text not null,
   caption text,
+  -- null = a real uploaded photo; set = AI-generated from this prompt.
+  generation_prompt text,
   created_at timestamptz not null default now()
 );
 

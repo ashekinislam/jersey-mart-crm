@@ -557,6 +557,7 @@ export interface VideoBrandAsset {
   kind: BrandAssetKind;
   storage_path: string;
   caption: string | null;
+  generation_prompt: string | null;
   created_at: string;
 }
 
