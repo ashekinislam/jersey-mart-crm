@@ -548,3 +548,57 @@ export interface ExpenseAllocation {
   order_id: string;
   amount: number;
 }
+
+export type BrandAssetKind = "photo" | "logo";
+
+export interface VideoBrandAsset {
+  id: string;
+  owner_id: string;
+  kind: BrandAssetKind;
+  storage_path: string;
+  caption: string | null;
+  created_at: string;
+}
+
+export type VideoType = "product_showcase" | "educational" | "service_promo";
+export type VideoStatus =
+  | "draft"
+  | "scripting"
+  | "voicing"
+  | "rendering"
+  | "ready"
+  | "failed"
+  | "posted";
+
+export const VIDEO_TYPE_LABELS: Record<VideoType, string> = {
+  product_showcase: "Product showcase",
+  educational: "Educational",
+  service_promo: "Service promo",
+};
+
+export const VIDEO_STATUS_LABELS: Record<VideoStatus, string> = {
+  draft: "Draft",
+  scripting: "Writing script",
+  voicing: "Recording voiceover",
+  rendering: "Rendering",
+  ready: "Ready",
+  failed: "Failed",
+  posted: "Posted",
+};
+
+export interface GeneratedVideo {
+  id: string;
+  owner_id: string;
+  video_type: VideoType;
+  status: VideoStatus;
+  script: string | null;
+  source_design_ids: string[];
+  source_brand_asset_ids: string[];
+  voiceover_storage_path: string | null;
+  render_id: string | null;
+  render_bucket_name: string | null;
+  output_url: string | null;
+  error_message: string | null;
+  posted_at: string | null;
+  created_at: string;
+}

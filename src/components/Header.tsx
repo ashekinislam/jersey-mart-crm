@@ -34,6 +34,12 @@ export function Header({
           >
             Costs
           </Link>
+          <Link
+            href="/videos"
+            className="text-sm text-slate-600 hover:text-slate-900"
+          >
+            Videos
+          </Link>
           {metaChatsEnabled() && (
             <Link
               href="/leads"
