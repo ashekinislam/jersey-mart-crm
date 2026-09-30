@@ -33,6 +33,17 @@ export async function GET(request: NextRequest) {
     .eq("stage", "machine_ready")
     .eq("status", "approved");
 
+  const { data: allDesigns } = await supabase
+    .from("designs")
+    .select("stage, status, created_at")
+    .eq("owner_id", OWNER_ID)
+    .order("created_at", { ascending: false });
+  const designBreakdown = new Map<string, number>();
+  for (const d of allDesigns ?? []) {
+    const key = `${d.stage}/${d.status}`;
+    designBreakdown.set(key, (designBreakdown.get(key) ?? 0) + 1);
+  }
+
   const { data: adSync } = await supabase
     .from("reckon_connections")
     .select("owner_id")
@@ -44,6 +55,9 @@ export async function GET(request: NextRequest) {
     brandAssetCount: (brandAssets ?? []).length,
     brandAssetKinds: [...new Set((brandAssets ?? []).map((a) => a.kind))],
     approvedMachineReadyDesignCount: (designs ?? []).length,
+    totalDesignCount: (allDesigns ?? []).length,
+    designBreakdown: Object.fromEntries(designBreakdown),
+    mostRecentDesign: allDesigns?.[0] ?? null,
     serviceClientOk: adSync !== undefined,
   });
 }
