@@ -54,15 +54,21 @@ export async function generateVideoScript(videoType: VideoType, photoCaptions: s
   }
 
   const json = (await res.json().catch(() => null)) as
-    | { content?: { text?: string }[]; error?: { message?: string } }
+    | { content?: { type?: string; text?: string }[]; stop_reason?: string; error?: { message?: string } }
     | null;
 
   if (!res.ok) {
     throw new Error(`fetch_failed: ${json?.error?.message ?? `HTTP ${res.status}`}`);
   }
 
-  const text = json?.content?.[0]?.text;
-  if (typeof text !== "string") throw new Error("bad_response: no text in Claude response");
+  // Don't assume the first content block is text -- a 200 response can still come back
+  // without one (e.g. content filtered, or truncated before any text was written), and
+  // when it does, this now says why instead of just "no text".
+  const text = json?.content?.find((block) => block?.type === "text")?.text;
+  if (typeof text !== "string") {
+    const blockTypes = (json?.content ?? []).map((b) => b?.type ?? "?").join(",") || "none";
+    throw new Error(`bad_response: no text in Claude response (stop_reason=${json?.stop_reason ?? "?"}, blocks=${blockTypes})`);
+  }
 
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) throw new Error("bad_response: could not find JSON in Claude response");
