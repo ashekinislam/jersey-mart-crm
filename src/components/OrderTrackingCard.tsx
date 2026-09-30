@@ -209,7 +209,6 @@ export function OrderTrackingCard({
           <input
             readOnly
             value={shareUrl}
-            onFocus={(e) => e.target.select()}
             className="min-w-0 flex-1 rounded-md border border-slate-300 bg-slate-50 px-3 py-1.5 text-sm text-slate-600"
           />
           <CopyButton text={shareUrl} />
