@@ -9,18 +9,7 @@ const OWNER_ID = process.env.META_OWNER_USER_ID!;
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    // Lengths and presence only -- never the actual values -- to find out WHY the
-    // check failed without leaking anything.
-    return NextResponse.json(
-      {
-        error: "Unauthorized",
-        gotHeader: authHeader != null,
-        headerLength: authHeader?.length ?? null,
-        envVarSet: process.env.CRON_SECRET != null,
-        envVarLength: process.env.CRON_SECRET?.length ?? null,
-      },
-      { status: 401 }
-    );
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const supabase = createServiceClient();
