@@ -221,7 +221,18 @@ export async function runGenerateVideo(
 
     return { ok: true, message: "Video generation started — rendering now." };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Something went wrong." };
+    const message = err instanceof Error ? err.message : "Something went wrong.";
+    // Record the failure -- previously this returned to the caller and vanished:
+    // the cron's response isn't stored anywhere, so a failure here was invisible
+    // unless someone happened to be watching that exact request. Source ids are
+    // left empty so a failed attempt doesn't mark real material as "used".
+    await supabase.from("generated_videos").insert({
+      owner_id: ownerId,
+      video_type: input.videoType,
+      status: "failed",
+      error_message: message,
+    });
+    return { ok: false, error: message };
   }
 }
 

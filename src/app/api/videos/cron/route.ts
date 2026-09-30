@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { brisbaneToday } from "@/lib/costs";
 import type { VideoType } from "@/lib/types";
 import { runCheckVideoRender, runGenerateBrandPhotos, runGenerateVideo, runPostGeneratedVideo } from "@/lib/videoPipeline";
+import { generateConceptJersey } from "@/lib/imageGen";
 
 export const maxDuration = 60;
 
@@ -21,6 +22,18 @@ const PHOTO_SCENE_PROMPTS = [
   "a close-up detail shot of this jersey's fabric and stitching, natural light, shallow depth of field",
   "this jersey folded neatly on a wooden table next to a ball from its sport, warm natural light",
   "a team huddled together wearing this jersey on a grass field at golden hour",
+];
+
+/** Used only when there's no real, approved customer design yet -- rotated through
+ * so consecutive invented concepts don't look identical. Never a real team, club or
+ * league: these are original, generic jersey concepts invented for marketing only. */
+const CONCEPT_THEMES = [
+  "A bold navy and gold rugby jersey with a geometric mountain-range pattern across the chest.",
+  "A vibrant teal and white soccer jersey with a subtle wave pattern flowing along the sides.",
+  "A classic maroon and cream Australian rules guernsey with a bold diagonal stripe.",
+  "A modern black and neon-green touch football jersey with sharp angular accent panels.",
+  "A traditional royal blue and white cricket shirt with a thin red pinstripe collar.",
+  "A sunset-orange and charcoal basketball singlet with a faded gradient down the sides.",
 ];
 
 function brisbaneDateOf(iso: string): string {
@@ -108,10 +121,9 @@ export async function GET(request: NextRequest) {
     .eq("status", "approved")
     .order("created_at", { ascending: true });
 
-  // Keep a steady supply of fresh AI product photos -- always guided by a
-  // real (never AI-generated) Design photo, so quality doesn't drift over
-  // repeated generations. Best-effort: a failure here shouldn't block
-  // today's video.
+  // Keep a steady supply of fresh AI product photos -- guided by a real customer
+  // design when one is approved and ready, so quality doesn't drift over repeated
+  // generations. Best-effort: a failure here shouldn't block today's video.
   if (designs && designs.length > 0) {
     const referenceDesign = designs[designs.length - 1];
     const scenePrompt = PHOTO_SCENE_PROMPTS[(totalVideos ?? 0) % PHOTO_SCENE_PROMPTS.length];
@@ -122,6 +134,30 @@ export async function GET(request: NextRequest) {
       count: 1,
     });
     log.push(`photo gen: ${photoResult.ok ? photoResult.message : photoResult.error}`);
+  } else {
+    // No real, approved customer design exists yet -- invent an original jersey
+    // concept with OpenAI instead of skipping the day entirely. Clearly labelled
+    // (never a real team/club/league) and rotated through a set of themes for
+    // variety. The moment a real design is approved above, this stops running.
+    const theme = CONCEPT_THEMES[(totalVideos ?? 0) % CONCEPT_THEMES.length];
+    try {
+      const concept = await generateConceptJersey(theme);
+      const storagePath = `${OWNER_ID}/photo/${Date.now()}-concept.png`;
+      const { error: uploadError } = await supabase.storage
+        .from("brand-assets")
+        .upload(storagePath, concept, { contentType: "image/png" });
+      if (uploadError) throw new Error(uploadError.message);
+      await supabase.from("video_brand_assets").insert({
+        owner_id: OWNER_ID,
+        kind: "photo",
+        storage_path: storagePath,
+        caption: "An original Jersey Mart concept design",
+        generation_prompt: `AI-invented concept (no approved customer design yet): ${theme}`,
+      });
+      log.push(`concept gen: invented a new jersey concept -- ${theme}`);
+    } catch (err) {
+      log.push(`concept gen failed: ${err instanceof Error ? err.message : "unknown error"}`);
+    }
   }
 
   const { data: brandAssets } = await supabase
