@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { generateConceptJersey } from "@/lib/imageGen";
 
 // TEMPORARY, read-only, CRON_SECRET-gated diagnostic -- checking what the latest
 // generated video actually used and said, and whether concept generation ran.
+export const maxDuration = 60;
 const OWNER_ID = process.env.META_OWNER_USER_ID!;
 
 export async function GET(request: NextRequest) {
@@ -29,9 +31,23 @@ export async function GET(request: NextRequest) {
     .order("created_at", { ascending: false })
     .limit(10);
 
+  // Real call to the concept generator -- the exact function the cron has apparently
+  // been failing on silently every time. Not saved anywhere (no DB/storage write);
+  // this only reports whether it worked and, if not, the real error.
+  let conceptTest: { ok: true; bytes: number } | { ok: false; error: string };
+  try {
+    const bytes = await generateConceptJersey(
+      "A bold navy and gold rugby jersey with a geometric mountain-range pattern across the chest."
+    );
+    conceptTest = { ok: true, bytes: bytes.length };
+  } catch (err) {
+    conceptTest = { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+
   return NextResponse.json({
     now: new Date().toISOString(),
     recentVideos: videos ?? [],
     recentBrandAssets: brandAssets ?? [],
+    conceptTest,
   });
 }
