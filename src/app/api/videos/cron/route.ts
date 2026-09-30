@@ -161,7 +161,10 @@ export async function GET(request: NextRequest) {
         owner_id: OWNER_ID,
         kind: "photo",
         storage_path: storagePath,
-        caption: "An original Jersey Mart concept design",
+        // The theme itself, not a generic label -- this is what gives the script-writer
+        // something specific ("navy and gold, mountain-range pattern") to work with,
+        // instead of every invented concept sounding the same as the last.
+        caption: theme,
         generation_prompt: `AI-invented concept (no approved customer design yet): ${theme}`,
       });
       log.push(`concept gen: invented a new jersey concept -- ${theme}`);

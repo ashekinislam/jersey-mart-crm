@@ -34,6 +34,13 @@ export function Scene({
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
+  // A quick upward pop instead of a static fade -- reads more like a sports-highlight
+  // caption than a slide deck. Same timing window as the opacity above, so it's still
+  // fully settled well before the scene ends.
+  const captionTranslateY = interpolate(frame, [fps * 0.3, fps * 0.7], [28, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
 
   return (
     <AbsoluteFill style={{ opacity, backgroundColor: "#0f172a" }}>
@@ -54,21 +61,31 @@ export function Scene({
           paddingRight: 60,
         }}
       >
-        <p
+        <div
           style={{
             opacity: captionOpacity,
-            color: "white",
-            fontFamily: "Arial, sans-serif",
-            fontWeight: 700,
-            fontSize: 56,
-            lineHeight: 1.25,
-            textAlign: "center",
-            textShadow: "0 2px 12px rgba(0,0,0,0.8)",
-            margin: 0,
+            transform: `translateY(${captionTranslateY}px)`,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
           }}
         >
-          {caption}
-        </p>
+          <div style={{ width: 64, height: 6, borderRadius: 3, backgroundColor: "#f97316", marginBottom: 18 }} />
+          <p
+            style={{
+              color: "white",
+              fontFamily: "Arial, sans-serif",
+              fontWeight: 700,
+              fontSize: 56,
+              lineHeight: 1.25,
+              textAlign: "center",
+              textShadow: "0 2px 12px rgba(0,0,0,0.8)",
+              margin: 0,
+            }}
+          >
+            {caption}
+          </p>
+        </div>
       </AbsoluteFill>
     </AbsoluteFill>
   );

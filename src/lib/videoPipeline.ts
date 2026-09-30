@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { VideoType } from "./types";
-import { generateVideoScript } from "./videoScript";
+import { generateVideoScript, type VideoScript } from "./videoScript";
 import { synthesizeVoiceover } from "./tts";
 import { startVideoRender, checkVideoRender } from "./remotionRender";
 import { postVideoToFacebookPage, startInstagramReel, waitAndPublishInstagram } from "./metaPublish";
@@ -180,9 +180,29 @@ export async function runGenerateVideo(
       return { ok: false, error: "Couldn't load any of the selected photos — try again." };
     }
 
+    // So the script-writer can actively avoid repeating itself instead of drifting
+    // toward the same stock phrasing every time.
+    const { data: pastVideos } = await supabase
+      .from("generated_videos")
+      .select("script")
+      .eq("owner_id", ownerId)
+      .not("script", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    const recentScripts = (pastVideos ?? [])
+      .map((v) => {
+        try {
+          return JSON.parse(v.script) as VideoScript;
+        } catch {
+          return null;
+        }
+      })
+      .filter((s): s is VideoScript => s != null);
+
     const script = await generateVideoScript(
       input.videoType,
-      scenesInput.map((s) => s.caption)
+      scenesInput.map((s) => s.caption),
+      recentScripts
     );
 
     const narration = script.lines.map((l) => l.trim().replace(/([^.!?])$/, "$1.")).join(" ");

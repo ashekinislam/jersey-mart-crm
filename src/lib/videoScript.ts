@@ -16,13 +16,25 @@ const VIDEO_TYPE_BRIEF: Record<VideoType, string> = {
 
 const SYSTEM_PROMPT = `You write short voiceover scripts for vertical social media videos (TikTok / Instagram Reels / YouTube Shorts) for Jersey Mart, an Australian business that designs and produces custom sports jerseys, uniforms and kits for teams and clubs.
 
-You'll be given a video type and a list of photo captions, in order. Each photo already exists — never invent details that contradict its caption. Write exactly one short narration line per photo (under 18 words, natural spoken tone, no hashtags, no emojis, no quotation marks), in the same order, plus a punchy on-screen headline (under 8 words) for the video's opening title card.
+Write like a hype sports-brand ad, not a product description. Match-day energy, team pride, confidence — short punchy sentences, active verbs, it's fine to speak straight to the viewer ("your club", "your team", "you"). This is NOT a corporate voiceover.
+
+Vary your wording and structure every single time. You will be shown scripts you've written before for this same brand — do not reuse their headline, their opening line, or their overall shape. If a phrase feels like something you'd default to out of habit ("real kits, real teams", "custom jerseys built for teams", anything with that same rhythm), that is exactly the phrase to avoid — write something else instead.
+
+You'll be given a video type and a list of photo captions, in order — these describe what's actually on screen (colours, pattern, sport, detail); lean on the specifics they give you rather than staying generic, and never contradict them. If a caption is just "Jersey Mart" with nothing else to go on, don't force detail that isn't there — stay energetic and general rather than inventing fake specifics.
+
+Write exactly one narration line per photo (under 16 words, natural spoken tone, no hashtags, no emojis, no quotation marks), in the same order, plus a punchy on-screen headline (under 6 words, no full stop) for the opening title card.
 
 Respond with ONLY minified JSON, no other text: {"headline":"...","lines":["...","..."]}`;
 
-/** Calls the Anthropic API to write a narration script matched 1:1 to the
- * given photo captions (one line per photo), plus a short intro headline. */
-export async function generateVideoScript(videoType: VideoType, photoCaptions: string[]): Promise<VideoScript> {
+/** Calls the Anthropic API to write a narration script matched 1:1 to the given photo
+ * captions (one line per photo), plus a short intro headline. `recentScripts` -- your
+ * last few headlines/openers -- is shown back so the model can actively avoid repeating
+ * itself instead of drifting toward the same stock phrasing every time. */
+export async function generateVideoScript(
+  videoType: VideoType,
+  photoCaptions: string[],
+  recentScripts: VideoScript[] = []
+): Promise<VideoScript> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("not_configured: ANTHROPIC_API_KEY missing");
 
@@ -31,6 +43,13 @@ export async function generateVideoScript(videoType: VideoType, photoCaptions: s
     "",
     "Photo captions, in order:",
     ...photoCaptions.map((c, i) => `${i + 1}. ${c.trim() || "(no caption provided)"}`),
+    ...(recentScripts.length
+      ? [
+          "",
+          "Scripts you've already written recently -- do not reuse their headline, opening line, or overall shape:",
+          ...recentScripts.map((s, i) => `${i + 1}. Headline: "${s.headline}" / Opens with: "${s.lines[0] ?? ""}"`),
+        ]
+      : []),
   ].join("\n");
 
   let res: Response;
