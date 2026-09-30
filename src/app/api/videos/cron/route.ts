@@ -12,6 +12,9 @@ const VIDEO_TYPES: VideoType[] = ["product_showcase", "educational", "service_pr
 /** How many new photo-scenes to include if there's no prior video to rotate
  * against -- keeps a fresh auto-generated video to a sensible length. */
 const SCENES_PER_VIDEO = 5;
+/** How many new videos to post per day -- spread across several cron schedule
+ * entries in vercel.json, since Vercel Hobby caps each one at once daily. */
+const DAILY_VIDEO_TARGET = 4;
 
 /** Rotated through so the AI photo pool doesn't turn into the same shot
  * over and over. Always describes a NEW scene for an EXISTING real jersey
@@ -93,17 +96,24 @@ export async function GET(request: NextRequest) {
     log.push(`retry instagram ${video.id}: ${posted.ok ? posted.message : posted.error}`);
   }
 
-  const { data: latest } = await supabase
+  // Vercel Hobby limits each individual cron job to once a day, so hitting this
+  // route DAILY_VIDEO_TARGET times a day (see vercel.json) needs several separate
+  // schedule entries rather than one more-frequent one -- each invocation still
+  // only generates one video, and this counts how many have already gone out
+  // today across all of them.
+  const { data: recentVideos } = await supabase
     .from("generated_videos")
     .select("created_at")
     .eq("owner_id", OWNER_ID)
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(20);
 
-  const alreadyGeneratedToday = latest ? brisbaneDateOf(latest.created_at) === brisbaneToday() : false;
-  if (alreadyGeneratedToday) {
-    log.push("skip generate: already generated a video today");
+  const videosGeneratedToday = (recentVideos ?? []).filter(
+    (v) => brisbaneDateOf(v.created_at) === brisbaneToday()
+  ).length;
+
+  if (videosGeneratedToday >= DAILY_VIDEO_TARGET) {
+    log.push(`skip generate: already generated ${videosGeneratedToday} video(s) today (target ${DAILY_VIDEO_TARGET})`);
     return NextResponse.json({ ok: true, log });
   }
 

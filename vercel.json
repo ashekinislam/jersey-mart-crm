@@ -10,7 +10,19 @@
     },
     {
       "path": "/api/videos/cron",
+      "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/videos/cron",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/videos/cron",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/videos/cron",
+      "schedule": "0 9 * * *"
     }
   ]
 }
