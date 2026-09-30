@@ -1,8 +1,10 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Bypasses RLS via the service-role key. Only ever import this from the
- * Meta webhook route — there is no user session to scope requests by there.
+ * Bypasses RLS via the service-role key. Only import this where there is no user
+ * session to scope requests by -- webhooks, cron jobs, and the public tracking page
+ * (whose visitor never logs in). Every caller must apply its own narrow, explicit
+ * column selection, since there is no RLS left to catch an accidental overfetch.
  */
 export function createServiceClient() {
   return createSupabaseClient(

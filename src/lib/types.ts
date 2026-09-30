@@ -78,6 +78,8 @@ export interface Order {
   shipping_status: ShippingStatus;
   tracking_url: string | null;
   tracking_number: string | null;
+  /** Powers the public /track/[token] page -- an unguessable link the owner can share with the customer. */
+  tracking_share_token: string;
   invoice_storage_path: string | null;
   sale_amount: number | null;
   supplier_cost: number | null;

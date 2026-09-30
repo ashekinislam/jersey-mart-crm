@@ -10,11 +10,15 @@ import {
 } from "@/lib/types";
 import {
   deleteInvoice,
+  regenerateTrackingShareToken,
   updateOrderTracking,
   uploadInvoice,
 } from "@/app/(app)/actions";
 import { FILE_INPUT_CLASS } from "@/lib/ui";
+import { trackingShareUrl } from "@/lib/tracking";
 import { FormWithToast } from "@/components/FormWithToast";
+import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
+import { CopyButton } from "@/components/CopyButton";
 
 export function OrderTrackingCard({
   customerId,
@@ -34,7 +38,13 @@ export function OrderTrackingCard({
   );
   const uploadInvoiceWithIds = uploadInvoice.bind(null, customerId, orderId);
   const deleteInvoiceWithIds = deleteInvoice.bind(null, customerId, orderId);
+  const regenerateTrackingShareTokenWithIds = regenerateTrackingShareToken.bind(
+    null,
+    customerId,
+    orderId
+  );
   const formId = `order-tracking-form-${orderId}`;
+  const shareUrl = trackingShareUrl(order.tracking_share_token);
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4">
@@ -186,6 +196,44 @@ export function OrderTrackingCard({
           </button>
         </div>
       </FormWithToast>
+
+      <div className="mt-4 border-t border-slate-100 pt-4">
+        <label className="block text-xs font-medium text-slate-600">
+          Share tracking with the customer
+        </label>
+        <p className="mt-0.5 text-xs text-slate-500">
+          A private link — no login needed. It shows only this order&rsquo;s status and tracking number, never
+          pricing or costs. Anyone with the link can open it, so only send it to the customer.
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <input
+            readOnly
+            value={shareUrl}
+            onFocus={(e) => e.target.select()}
+            className="min-w-0 flex-1 rounded-md border border-slate-300 bg-slate-50 px-3 py-1.5 text-sm text-slate-600"
+          />
+          <CopyButton text={shareUrl} />
+          <a
+            href={shareUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Preview
+          </a>
+          <FormWithToast
+            action={regenerateTrackingShareTokenWithIds}
+            successMessage="New link generated — the old one no longer works"
+          >
+            <ConfirmSubmitButton
+              confirmMessage="Generate a new tracking link? The current link will stop working, so anyone you already sent it to will need the new one."
+              className="text-xs text-slate-400 hover:text-red-600"
+            >
+              Regenerate link
+            </ConfirmSubmitButton>
+          </FormWithToast>
+        </div>
+      </div>
 
       <div className="mt-4 border-t border-slate-100 pt-4">
         <label className="block text-xs font-medium text-slate-600">

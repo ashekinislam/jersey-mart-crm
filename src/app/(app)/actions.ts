@@ -1,6 +1,7 @@
 "use server";
 
 import ExcelJS from "exceljs";
+import { randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -338,6 +339,25 @@ export async function updateOrderTracking(
   revalidatePath("/customers");
   revalidatePath("/orders");
   revalidatePath("/");
+}
+
+/** Issues a fresh customer tracking link and retires the old one -- for when a link
+ * was sent to the wrong person or the owner just wants a clean new one. */
+export async function regenerateTrackingShareToken(
+  customerId: string,
+  orderId: string
+) {
+  const supabase = await createClient();
+  await supabase
+    .from("orders")
+    .update({
+      tracking_share_token: randomBytes(16).toString("hex"),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", orderId);
+
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
+  revalidatePath(`/customers/${customerId}`);
 }
 
 export async function updateOrderStatusQuick(
