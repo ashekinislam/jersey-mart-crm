@@ -190,8 +190,8 @@ export const SHIPPING_STATUSES: ShippingStatus[] = [
 
 export const SHIPPING_STATUS_LABELS: Record<ShippingStatus, string> = {
   not_shipped: "Not shipped yet",
-  at_factory: "At factory (Bangladesh)",
-  with_carrier: "With carrier (BDEX etc.)",
+  at_factory: "At origin factory",
+  with_carrier: "With carrier",
   in_transit_overseas: "In transit — overseas",
   in_transit_australia: "In transit — Australia",
   out_for_delivery: "Out for delivery",
