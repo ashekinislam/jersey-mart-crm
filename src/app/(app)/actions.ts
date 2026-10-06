@@ -314,6 +314,17 @@ export async function updateOrderTracking(
   const tracking_url = String(formData.get("tracking_url") ?? "").trim() || null;
   const tracking_number =
     String(formData.get("tracking_number") ?? "").trim() || null;
+  let expected_delivery_from =
+    String(formData.get("expected_delivery_from") ?? "").trim() || null;
+  let expected_delivery_to =
+    String(formData.get("expected_delivery_to") ?? "").trim() || null;
+  if (
+    expected_delivery_from &&
+    expected_delivery_to &&
+    expected_delivery_from > expected_delivery_to
+  ) {
+    [expected_delivery_from, expected_delivery_to] = [expected_delivery_to, expected_delivery_from];
+  }
 
   const supabase = await createClient();
   await supabase
@@ -329,6 +340,8 @@ export async function updateOrderTracking(
       shipping_status,
       tracking_url,
       tracking_number,
+      expected_delivery_from,
+      expected_delivery_to,
       updated_at: new Date().toISOString(),
     })
     .eq("id", orderId);

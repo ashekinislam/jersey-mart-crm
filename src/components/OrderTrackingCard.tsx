@@ -183,6 +183,32 @@ export function OrderTrackingCard({
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
           />
         </div>
+        <div className="sm:col-span-2">
+          <label className="block text-xs font-medium text-slate-600">
+            Expected delivery window (shown to the customer)
+          </label>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <input
+              type="date"
+              name="expected_delivery_from"
+              defaultValue={order.expected_delivery_from ?? ""}
+              aria-label="Expected delivery from"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+            <span className="text-xs text-slate-500">to</span>
+            <input
+              type="date"
+              name="expected_delivery_to"
+              defaultValue={order.expected_delivery_to ?? ""}
+              aria-label="Expected delivery to"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+          <p className="mt-1 text-xs text-slate-500">
+            Optional. Leave both blank to show no estimate. Separate from the internal Deadline above, which the
+            customer never sees.
+          </p>
+        </div>
         <p className="sm:col-span-2 text-xs text-slate-500">
           Pickup address (when the customer collects instead of shipping):{" "}
           {PICKUP_ADDRESS}

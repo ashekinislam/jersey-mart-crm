@@ -78,6 +78,9 @@ export interface Order {
   shipping_status: ShippingStatus;
   tracking_url: string | null;
   tracking_number: string | null;
+  /** Customer-facing estimated delivery window (YYYY-MM-DD), shown on the public tracking page. */
+  expected_delivery_from: string | null;
+  expected_delivery_to: string | null;
   /** Powers the public /track/[token] page -- an unguessable link the owner can share with the customer. */
   tracking_share_token: string;
   invoice_storage_path: string | null;

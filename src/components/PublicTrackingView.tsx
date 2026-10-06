@@ -1,5 +1,5 @@
 import { PICKUP_ADDRESS, SHIPPING_STATUS_COLORS, SHIPPING_STATUS_LABELS } from "@/lib/types";
-import type { PublicTrackingData } from "@/lib/tracking";
+import { formatDeliveryWindow, type PublicTrackingData } from "@/lib/tracking";
 
 const AU_DATETIME = new Intl.DateTimeFormat("en-AU", {
   timeZone: "Australia/Brisbane",
@@ -12,6 +12,9 @@ const AU_DATETIME = new Intl.DateTimeFormat("en-AU", {
  * with made-up data without touching the database. */
 export function PublicTrackingView({ data }: { data: PublicTrackingData }) {
   const isPickup = data.shippingStatus === "ready_for_pickup" || data.shippingStatus === "picked_up";
+  // An estimate is only useful while the order is still on its way.
+  const isFinished = isPickup || data.shippingStatus === "delivered";
+  const deliveryWindow = isFinished ? null : formatDeliveryWindow(data.expectedDeliveryFrom, data.expectedDeliveryTo);
 
   return (
     <div className="mx-auto min-h-screen max-w-md bg-slate-50 px-4 py-10">
@@ -30,6 +33,16 @@ export function PublicTrackingView({ data }: { data: PublicTrackingData }) {
             {SHIPPING_STATUS_LABELS[data.shippingStatus]}
           </span>
         </div>
+
+        {deliveryWindow && (
+          <div className="mt-4">
+            <p className="text-xs font-medium text-slate-500">Estimated delivery</p>
+            <p className="text-sm font-semibold text-slate-900">{deliveryWindow}</p>
+            <p className="mt-0.5 text-xs text-slate-400">
+              This is an estimate and can shift a little with shipping — we&rsquo;ll keep this page up to date.
+            </p>
+          </div>
+        )}
 
         {isPickup && (
           <p className="mt-3 text-sm text-slate-600">

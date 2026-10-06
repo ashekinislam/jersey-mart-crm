@@ -38,6 +38,8 @@ create table if not exists orders (
     check (shipping_status in ('not_shipped','at_factory','with_carrier','in_transit_overseas','in_transit_australia','out_for_delivery','delivered','ready_for_pickup','picked_up')),
   tracking_url text,
   tracking_number text,
+  expected_delivery_from date,
+  expected_delivery_to date,
   invoice_storage_path text,
   sale_amount numeric(10,2),
   supplier_cost numeric(10,2),
