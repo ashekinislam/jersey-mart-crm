@@ -82,6 +82,7 @@ export default async function OrderDetailPage({
         orderId={orderId}
         order={o}
         invoiceUrl={invoiceUrl}
+        customerName={c.name}
       />
       <OrderCostsCard
         customerId={id}

@@ -346,7 +346,7 @@ export default async function CustomerDetailPage({
         </FormWithToast>
       </details>
 
-      <CustomerOrdersSection customerId={id} />
+      <CustomerOrdersSection customerId={id} customerName={c.name} />
 
       {metaChatsEnabled() && <MetaChatSection customerId={id} />}
 

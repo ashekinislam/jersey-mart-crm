@@ -19,17 +19,20 @@ import { trackingShareUrl } from "@/lib/tracking";
 import { FormWithToast } from "@/components/FormWithToast";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { CopyButton } from "@/components/CopyButton";
+import { TrackingMessage } from "@/components/TrackingMessage";
 
 export function OrderTrackingCard({
   customerId,
   orderId,
   order,
   invoiceUrl,
+  customerName,
 }: {
   customerId: string;
   orderId: string;
   order: Order;
   invoiceUrl: string | null;
+  customerName: string;
 }) {
   const updateOrderTrackingWithIds = updateOrderTracking.bind(
     null,
@@ -258,6 +261,7 @@ export function OrderTrackingCard({
             </ConfirmSubmitButton>
           </FormWithToast>
         </div>
+        <TrackingMessage customerName={customerName} orderLabel={order.label} shareUrl={shareUrl} />
       </div>
 
       <div className="mt-4 border-t border-slate-100 pt-4">

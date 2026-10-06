@@ -25,8 +25,10 @@ import { FormWithToast } from "@/components/FormWithToast";
  */
 export async function CustomerOrdersSection({
   customerId,
+  customerName,
 }: {
   customerId: string;
+  customerName: string;
 }) {
   const supabase = await createClient();
   const { data: orders } = await supabase
@@ -99,6 +101,7 @@ export async function CustomerOrdersSection({
           orderId={order.id}
           order={order}
           invoiceUrl={invoiceUrl}
+          customerName={customerName}
         />
         <OrderCostsCard
           customerId={customerId}
