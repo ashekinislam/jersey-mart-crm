@@ -4,7 +4,7 @@ export default function PrivacyPolicyPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 text-sm leading-relaxed text-slate-700">
       <h1 className="text-xl font-semibold text-slate-900">Privacy Policy</h1>
-      <p className="mt-1 text-xs text-slate-400">Last updated 27 September 2026</p>
+      <p className="mt-1 text-xs text-slate-400">Last updated 8 October 2026</p>
 
       <p className="mt-6">
         Jersey Mart CRM is an internal business-management tool built and used solely by Jersey Mart, an
@@ -25,8 +25,7 @@ export default function PrivacyPolicyPage() {
       </p>
       <ul className="mt-2 list-disc pl-5">
         <li>read advertising spend for Jersey Mart&apos;s own ad account, so it appears alongside other business costs;</li>
-        <li>receive and reply to customer messages sent to Jersey Mart&apos;s Facebook Page or Instagram, so they can be handled from one place;</li>
-        <li>publish promotional and educational videos, generated from Jersey Mart&apos;s own product photos, to Jersey Mart&apos;s own Facebook Page and Instagram account.</li>
+        <li>receive and reply to customer messages sent to Jersey Mart&apos;s Facebook Page or Instagram, so they can be handled from one place.</li>
       </ul>
       <p className="mt-2">
         None of this data is sold, shared with advertisers, or used for any purpose beyond operating Jersey
@@ -36,9 +35,8 @@ export default function PrivacyPolicyPage() {
       <h2 className="mt-6 text-base font-semibold text-slate-900">Service providers</h2>
       <p className="mt-2">
         The app relies on a small number of infrastructure providers to function: Supabase (database and file
-        storage), Vercel (hosting), Anthropic and OpenAI (generating video scripts and product photos), ElevenLabs
-        (generating voiceover audio), and AWS (rendering video files). These providers process data only as
-        needed to perform those functions on Jersey Mart&apos;s behalf, and do not use it for their own purposes.
+        storage) and Vercel (hosting). These providers process data only as needed to perform those functions on
+        Jersey Mart&apos;s behalf, and do not use it for their own purposes.
       </p>
 
       <h2 className="mt-6 text-base font-semibold text-slate-900">Data retention and deletion</h2>
