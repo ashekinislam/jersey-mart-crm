@@ -11,12 +11,16 @@ import { isFrameworkNavigationError, useToast } from "./ToastProvider";
 export function FormWithToast({
   action,
   successMessage = "Saved",
+  resetOnSuccess = false,
   className,
   id,
   children,
 }: {
-  action: (formData: FormData) => Promise<void>;
+  /** May return `{ ok: false, error }` to show a validation message instead of the success toast. */
+  action: (formData: FormData) => Promise<void | { ok: boolean; error?: string }>;
   successMessage?: string;
+  /** Clear the inputs after a successful submit (for "add another" style forms). */
+  resetOnSuccess?: boolean;
   className?: string;
   id?: string;
   children: React.ReactNode;
@@ -31,11 +35,17 @@ export function FormWithToast({
       aria-busy={isPending}
       onSubmit={(e) => {
         e.preventDefault();
-        const formData = new FormData(e.currentTarget);
+        const form = e.currentTarget;
+        const formData = new FormData(form);
         startTransition(async () => {
           try {
-            await action(formData);
+            const result = await action(formData);
+            if (result && !result.ok) {
+              showToast(result.error ?? "Couldn't save -- check the fields", "error");
+              return;
+            }
             showToast(successMessage);
+            if (resetOnSuccess) form.reset();
           } catch (err) {
             if (isFrameworkNavigationError(err)) throw err;
             showToast("Something went wrong -- try again", "error");

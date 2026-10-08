@@ -554,6 +554,43 @@ export interface ExpenseAllocation {
   amount: number;
 }
 
+export type LoanEntryKind = "lent" | "supplier_bill" | "shipping" | "repayment";
+
+export const LOAN_ENTRY_KINDS: LoanEntryKind[] = [
+  "lent",
+  "supplier_bill",
+  "shipping",
+  "repayment",
+];
+
+export const LOAN_KIND_LABELS: Record<LoanEntryKind, string> = {
+  lent: "Lent to them",
+  supplier_bill: "Supplier bill paid by them",
+  shipping: "Shipping paid by them",
+  repayment: "Cash repayment",
+};
+
+/** +1 = they owe the business more, -1 = they owe less. */
+export const LOAN_KIND_SIGN: Record<LoanEntryKind, 1 | -1> = {
+  lent: 1,
+  supplier_bill: -1,
+  shipping: -1,
+  repayment: -1,
+};
+
+export interface LoanEntry {
+  id: string;
+  owner_id: string;
+  person: string;
+  kind: LoanEntryKind;
+  entry_date: string;
+  aud_amount: number | null;
+  bdt_amount: number | null;
+  description: string | null;
+  order_id: string | null;
+  created_at: string;
+}
+
 export type BrandAssetKind = "photo" | "logo";
 
 export interface VideoBrandAsset {

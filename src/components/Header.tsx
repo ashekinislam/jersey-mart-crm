@@ -35,6 +35,12 @@ export function Header({
             Costs
           </Link>
           <Link
+            href="/ledger"
+            className="text-sm text-slate-600 hover:text-slate-900"
+          >
+            Ledger
+          </Link>
+          <Link
             href="/videos"
             className="text-sm text-slate-600 hover:text-slate-900"
           >

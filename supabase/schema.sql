@@ -417,3 +417,28 @@ create policy "owner_delete voiceovers bucket" on storage.objects
     bucket_id = 'voiceovers'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
+
+-- Loan ledger (migration 026): money lent to / paid on behalf by someone, with
+-- separate AUD and BDT amounts. Direction comes from `kind`.
+create table if not exists loan_entries (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  person text not null,
+  kind text not null check (kind in ('lent', 'supplier_bill', 'shipping', 'repayment')),
+  entry_date date not null default current_date,
+  aud_amount numeric(12,2) check (aud_amount >= 0),
+  bdt_amount numeric(14,2) check (bdt_amount >= 0),
+  description text,
+  order_id uuid references orders(id) on delete set null,
+  created_at timestamptz not null default now(),
+  check (aud_amount is not null or bdt_amount is not null)
+);
+
+create index if not exists loan_entries_owner_date_idx
+  on loan_entries(owner_id, entry_date desc);
+
+alter table loan_entries enable row level security;
+
+drop policy if exists "owner_all loan_entries" on loan_entries;
+create policy "owner_all loan_entries" on loan_entries
+  for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
