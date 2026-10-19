@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { brisbaneToday } from "@/lib/costs";
 import {
-  LOAN_ENTRY_KINDS,
+  LOAN_KIND_GROUPS,
   LOAN_KIND_LABELS,
   LOAN_KIND_SIGN,
   type Customer,
@@ -74,14 +74,25 @@ export default async function LedgerPage() {
   }
   const personList = [...people.values()];
 
+  // Overall position per currency: what others owe the business vs what the business owes
+  // others. Netted per person first, so lending and borrowing with the same person cancel.
+  const position = { aud: { owedToYou: 0, youOwe: 0 }, bdt: { owedToYou: 0, youOwe: 0 } };
+  for (const p of personList) {
+    for (const cur of ["aud", "bdt"] as const) {
+      const v = Math.round(p[cur] * 100) / 100;
+      if (v > 0) position[cur].owedToYou += v;
+      else if (v < 0) position[cur].youOwe += -v;
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold text-slate-900">Ledger</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Money lent out, and bills or shipping paid back on your behalf —
-            tracked in AUD and BDT separately.
+            Money you lend out or borrow, and bills or shipping paid on your
+            behalf — tracked in AUD and BDT separately.
           </p>
         </div>
         {entries.length > 0 && (
@@ -93,6 +104,39 @@ export default async function LedgerPage() {
           </a>
         )}
       </div>
+
+      {personList.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+            <h2 className="text-sm font-semibold text-emerald-900">Owed to you</h2>
+            <p className="mt-0.5 text-xs text-emerald-800/70">Money you lent that hasn&apos;t come back yet</p>
+            <dl className="mt-2 space-y-1 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-emerald-800/70">AUD</dt>
+                <dd className="font-semibold text-emerald-900">{audFmt.format(position.aud.owedToYou)}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-emerald-800/70">BDT</dt>
+                <dd className="font-semibold text-emerald-900">{bdtFmt.format(position.bdt.owedToYou)}</dd>
+              </div>
+            </dl>
+          </section>
+          <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <h2 className="text-sm font-semibold text-amber-900">You owe</h2>
+            <p className="mt-0.5 text-xs text-amber-800/70">Money you borrowed that you haven&apos;t paid back yet</p>
+            <dl className="mt-2 space-y-1 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-amber-800/70">AUD</dt>
+                <dd className="font-semibold text-amber-900">{audFmt.format(position.aud.youOwe)}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-amber-800/70">BDT</dt>
+                <dd className="font-semibold text-amber-900">{bdtFmt.format(position.bdt.youOwe)}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      )}
 
       {personList.length > 0 && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -124,8 +168,10 @@ export default async function LedgerPage() {
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-slate-900">Add an entry</h2>
         <p className="mt-1 text-xs text-slate-500">
-          AUD and BDT balances are tracked separately — put both amounts on
-          each bill (where you know them) so they net off the loan properly.
+          Lending to a supplier or anyone else? Choose &ldquo;Lent to them&rdquo;. Borrowed
+          from someone? Choose &ldquo;Borrowed from them&rdquo;, then &ldquo;I paid them back&rdquo; as
+          you repay. AUD and BDT are tracked separately — put both amounts on
+          each entry where you know them.
         </p>
         <FormWithToast
           action={addLoanEntry}
@@ -150,7 +196,7 @@ export default async function LedgerPage() {
               required
               list="ledger-people"
               defaultValue={personList.length === 1 ? personList[0].name : ""}
-              placeholder="e.g. Dad"
+              placeholder="e.g. Dad, or a supplier's name"
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
             />
             <datalist id="ledger-people">
@@ -166,10 +212,14 @@ export default async function LedgerPage() {
               defaultValue="lent"
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
             >
-              {LOAN_ENTRY_KINDS.map((k) => (
-                <option key={k} value={k}>
-                  {LOAN_KIND_LABELS[k]}
-                </option>
+              {LOAN_KIND_GROUPS.map((g) => (
+                <optgroup key={g.label} label={g.label}>
+                  {g.kinds.map((k) => (
+                    <option key={k} value={k}>
+                      {LOAN_KIND_LABELS[k]}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>
@@ -300,6 +350,12 @@ export default async function LedgerPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {entries.length > 0 && (
+          <p className="border-t border-slate-100 px-4 py-2 text-xs text-slate-400">
+            Plain amounts mean they owe you more (or you owe them less); green amounts with a minus mean they owe
+            you less (or you owe them more).
+          </p>
         )}
       </section>
     </div>

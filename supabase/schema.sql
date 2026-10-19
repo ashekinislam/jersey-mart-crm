@@ -334,7 +334,7 @@ create table if not exists loan_entries (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   person text not null,
-  kind text not null check (kind in ('lent', 'supplier_bill', 'shipping', 'repayment')),
+  kind text not null check (kind in ('lent', 'supplier_bill', 'shipping', 'repayment', 'borrowed', 'repaid_by_you')),
   entry_date date not null default current_date,
   aud_amount numeric(12,2) check (aud_amount >= 0),
   bdt_amount numeric(14,2) check (bdt_amount >= 0),

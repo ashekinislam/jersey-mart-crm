@@ -554,13 +554,21 @@ export interface ExpenseAllocation {
   amount: number;
 }
 
-export type LoanEntryKind = "lent" | "supplier_bill" | "shipping" | "repayment";
+export type LoanEntryKind =
+  | "lent"
+  | "supplier_bill"
+  | "shipping"
+  | "repayment"
+  | "borrowed"
+  | "repaid_by_you";
 
 export const LOAN_ENTRY_KINDS: LoanEntryKind[] = [
   "lent",
   "supplier_bill",
   "shipping",
   "repayment",
+  "borrowed",
+  "repaid_by_you",
 ];
 
 export const LOAN_KIND_LABELS: Record<LoanEntryKind, string> = {
@@ -568,14 +576,24 @@ export const LOAN_KIND_LABELS: Record<LoanEntryKind, string> = {
   supplier_bill: "Supplier bill paid by them",
   shipping: "Shipping paid by them",
   repayment: "Cash repayment",
+  borrowed: "Borrowed from them",
+  repaid_by_you: "I paid them back",
 };
 
-/** +1 = they owe the business more, -1 = they owe less. */
+/** Which group an entry type sits in on the add form. */
+export const LOAN_KIND_GROUPS: { label: string; kinds: LoanEntryKind[] }[] = [
+  { label: "Money I lent", kinds: ["lent", "supplier_bill", "shipping", "repayment"] },
+  { label: "Money I borrowed", kinds: ["borrowed", "repaid_by_you"] },
+];
+
+/** +1 = they owe the business more (or the business owes them less), -1 = the reverse. */
 export const LOAN_KIND_SIGN: Record<LoanEntryKind, 1 | -1> = {
   lent: 1,
   supplier_bill: -1,
   shipping: -1,
   repayment: -1,
+  borrowed: -1,
+  repaid_by_you: 1,
 };
 
 export interface LoanEntry {
