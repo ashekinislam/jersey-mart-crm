@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { runReckonSync } from "@/lib/reckon";
+import { runReckonAddressRefresh, runReckonSync } from "@/lib/reckon";
 
 export async function updateReckonBookId(formData: FormData) {
   const book_id = String(formData.get("book_id") ?? "").trim() || null;
@@ -40,6 +40,28 @@ export async function syncReckon() {
   }
   redirect(
     `/settings/reckon?synced=1&updated=${summary.updated}&linked=${summary.linked}&drafted=${summary.drafted}`
+  );
+}
+
+/** Fills in the state and postcode on customers imported from Reckon before those were
+ * brought across. Leaves any address that was edited by hand alone. */
+export async function refreshReckonAddresses() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const summary = await runReckonAddressRefresh(supabase, user.id);
+
+  revalidatePath("/customers");
+  revalidatePath("/dispatch");
+
+  if (!summary.ok) {
+    redirect(`/settings/reckon?syncError=${summary.error}`);
+  }
+  redirect(
+    `/settings/reckon?addrDone=1&addrUpdated=${summary.updated}&addrSkipped=${summary.skippedEdited}&addrRemaining=${summary.remaining}`
   );
 }
 

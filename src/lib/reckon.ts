@@ -1,3 +1,4 @@
+import { formatAuAddress, legacyAddress, normaliseState } from "@/lib/address";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AiDraftPayload, Order, PaymentStatus, ReckonConnection } from "@/lib/types";
 
@@ -59,21 +60,22 @@ export function extractReckonContact(customer: ReckonCustomerDetail): {
       (e) => e.type.name === "Email" && e.address.trim()
     )?.address ?? null;
 
-  const addressByType = (name: string) =>
+  const addressEntry = pickReckonAddress(customer);
+  const address = addressEntry ? formatAuAddress(addressEntry) : null;
+  const state = normaliseState(addressEntry?.state);
+
+  return { phone, email, address, state };
+}
+
+/** Postal over Shipping over Business, same priority Reckon's own UI uses. */
+export function pickReckonAddress(
+  customer: ReckonCustomerDetail
+): NonNullable<ReckonCustomerDetail["addresses"]>[number] | undefined {
+  const byType = (name: string) =>
     customer.addresses?.find(
       (a) => a.type.name === name && (a.line1.trim() || a.suburb.trim())
     );
-  const addressEntry =
-    addressByType("Postal") ?? addressByType("Shipping") ?? addressByType("Business");
-  const address = addressEntry
-    ? [addressEntry.line1, addressEntry.line2, addressEntry.line3, addressEntry.suburb]
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .join(", ") || null
-    : null;
-  const state = addressEntry?.state.trim() || null;
-
-  return { phone, email, address, state };
+  return byType("Postal") ?? byType("Shipping") ?? byType("Business");
 }
 
 /** Reckon has no "partially paid" invoice status of its own -- balance vs. the
@@ -203,6 +205,27 @@ export async function reckonApiGet(
   return { ok: res.ok, status: res.status, body };
 }
 
+/** The Reckon API defaults to page=1/perpage=10 when unpaginated -- fetching
+ * just "/invoices" silently truncates to the first 10 invoices by their
+ * default order, so anything beyond that (including newly created ones)
+ * never gets seen. Page through everything explicitly instead. */
+async function fetchAllReckonInvoices(
+  accessToken: string,
+  bookId: string
+): Promise<{ ok: true; invoices: ReckonInvoice[] } | { ok: false; detail: unknown }> {
+  const perPage = 100;
+  const invoices: ReckonInvoice[] = [];
+  for (let page = 1; page <= 50; page++) {
+    const result = await reckonApiGet(accessToken, bookId, `/invoices?page=${page}&perpage=${perPage}`);
+    if (!result.ok) return { ok: false, detail: { status: result.status, body: result.body } };
+
+    const pageInvoices = ((result.body as { list?: ReckonInvoice[] })?.list ?? []) as ReckonInvoice[];
+    invoices.push(...pageInvoices);
+    if (pageInvoices.length < perPage) break;
+  }
+  return { ok: true, invoices };
+}
+
 export interface ReckonSyncSummary {
   ok: boolean;
   error?: string;
@@ -229,34 +252,18 @@ export async function runReckonSync(
     return { ok: false, error: "token_failed", updated: 0, linked: 0, drafted: 0 };
   }
 
-  // The Reckon API defaults to page=1/perpage=10 when unpaginated -- fetching
-  // just "/invoices" silently truncates to the first 10 invoices by their
-  // default order, so anything beyond that (including newly created ones)
-  // never gets seen. Page through everything explicitly instead.
-  const perPage = 100;
-  const invoices: ReckonInvoice[] = [];
-  for (let page = 1; page <= 50; page++) {
-    const result = await reckonApiGet(
-      accessToken,
-      connection.book_id,
-      `/invoices?page=${page}&perpage=${perPage}`
-    );
-    if (!result.ok) {
-      return {
-        ok: false,
-        error: "fetch_failed",
-        detail: { status: result.status, body: result.body },
-        updated: 0,
-        linked: 0,
-        drafted: 0,
-      };
-    }
-
-    const pageInvoices = ((result.body as { list?: ReckonInvoice[] })?.list ??
-      []) as ReckonInvoice[];
-    invoices.push(...pageInvoices);
-    if (pageInvoices.length < perPage) break;
+  const fetched = await fetchAllReckonInvoices(accessToken, connection.book_id);
+  if (!fetched.ok) {
+    return {
+      ok: false,
+      error: "fetch_failed",
+      detail: fetched.detail,
+      updated: 0,
+      linked: 0,
+      drafted: 0,
+    };
   }
+  const invoices = fetched.invoices;
 
   const { data: existingOrders } = await supabase
     .from("orders")
@@ -426,4 +433,95 @@ export async function runReckonSync(
     .eq("owner_id", ownerId);
 
   return { ok: true, updated, linked, drafted };
+}
+
+export interface ReckonAddressRefreshSummary {
+  ok: boolean;
+  error?: string;
+  updated: number;
+  /** Customers whose address was left alone because it had been edited by hand. */
+  skippedEdited: number;
+  /** Customers still to do because the run stopped early to stay within the time limit. */
+  remaining: number;
+}
+
+/** Fills in the state and postcode for customers whose address was imported from Reckon
+ * before those were included. Only touches an address that is blank or still exactly what
+ * the old import wrote -- anything edited by hand is left as it is. */
+export async function runReckonAddressRefresh(
+  supabase: SupabaseClient,
+  ownerId: string,
+  options: { deadlineMs?: number } = {}
+): Promise<ReckonAddressRefreshSummary> {
+  const empty = { updated: 0, skippedEdited: 0, remaining: 0 };
+  const deadline = Date.now() + (options.deadlineMs ?? 45_000);
+
+  const connection = await getReckonConnection(supabase, ownerId);
+  if (!connection?.book_id) return { ok: false, error: "not_ready", ...empty };
+  const accessToken = await getValidAccessToken(supabase, connection);
+  if (!accessToken) return { ok: false, error: "token_failed", ...empty };
+
+  const fetched = await fetchAllReckonInvoices(accessToken, connection.book_id);
+  if (!fetched.ok) return { ok: false, error: "fetch_failed", ...empty };
+  const reckonCustomerByInvoice = new Map<string, string>();
+  for (const inv of fetched.invoices) {
+    if (inv.customer?.id) reckonCustomerByInvoice.set(inv.id, inv.customer.id);
+  }
+
+  // CRM customer -> the Reckon customer behind one of their linked invoices.
+  const { data: linkedOrders } = await supabase
+    .from("orders")
+    .select("customer_id, reckon_invoice_id")
+    .eq("owner_id", ownerId)
+    .not("reckon_invoice_id", "is", null);
+  const reckonIdByCustomer = new Map<string, string>();
+  for (const o of (linkedOrders ?? []) as { customer_id: string; reckon_invoice_id: string }[]) {
+    const reckonId = reckonCustomerByInvoice.get(o.reckon_invoice_id);
+    if (reckonId && !reckonIdByCustomer.has(o.customer_id)) reckonIdByCustomer.set(o.customer_id, reckonId);
+  }
+  if (reckonIdByCustomer.size === 0) return { ok: true, ...empty };
+
+  const { data: customers } = await supabase
+    .from("customers")
+    .select("id, address, state")
+    .eq("owner_id", ownerId)
+    .in("id", [...reckonIdByCustomer.keys()]);
+
+  const detailCache = new Map<string, ReckonCustomerDetail | null>();
+  let updated = 0;
+  let skippedEdited = 0;
+  const list = (customers ?? []) as { id: string; address: string | null; state: string | null }[];
+
+  for (let i = 0; i < list.length; i++) {
+    if (Date.now() > deadline) return { ok: true, updated, skippedEdited, remaining: list.length - i };
+
+    const customer = list[i];
+    const reckonId = reckonIdByCustomer.get(customer.id)!;
+    if (!detailCache.has(reckonId)) {
+      const result = await reckonApiGet(accessToken, connection.book_id, `/customers/${reckonId}`);
+      detailCache.set(reckonId, result.ok ? (result.body as ReckonCustomerDetail) : null);
+    }
+    const detail = detailCache.get(reckonId);
+    const entry = detail ? pickReckonAddress(detail) : undefined;
+    if (!entry) continue;
+
+    const fullAddress = formatAuAddress(entry);
+    if (!fullAddress) continue;
+
+    const current = (customer.address ?? "").trim();
+    const untouched = current === "" || current.toLowerCase() === (legacyAddress(entry) ?? "").toLowerCase();
+    if (!untouched) {
+      if (current.toLowerCase() !== fullAddress.toLowerCase()) skippedEdited++;
+      continue;
+    }
+    if (current === fullAddress && customer.state) continue;
+
+    await supabase
+      .from("customers")
+      .update({ address: fullAddress, state: customer.state || normaliseState(entry.state) })
+      .eq("id", customer.id);
+    updated++;
+  }
+
+  return { ok: true, updated, skippedEdited, remaining: 0 };
 }

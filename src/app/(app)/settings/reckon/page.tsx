@@ -1,8 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ReckonConnection } from "@/lib/types";
-import { disconnectReckon, syncReckon, updateReckonBookId } from "./actions";
+import { disconnectReckon, refreshReckonAddresses, syncReckon, updateReckonBookId } from "./actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { FormWithToast } from "@/components/FormWithToast";
+
+// Refreshing addresses makes one Reckon call per customer.
+export const maxDuration = 60;
 
 const AU_DATETIME_FORMAT = new Intl.DateTimeFormat("en-AU", {
   timeZone: "Australia/Brisbane",
@@ -34,10 +37,25 @@ export default async function ReckonSettingsPage({
     linked?: string;
     drafted?: string;
     syncError?: string;
+    addrDone?: string;
+    addrUpdated?: string;
+    addrSkipped?: string;
+    addrRemaining?: string;
   }>;
 }) {
-  const { connected, error, synced, updated, linked, drafted, syncError } =
-    await searchParams;
+  const {
+    connected,
+    error,
+    synced,
+    updated,
+    linked,
+    drafted,
+    syncError,
+    addrDone,
+    addrUpdated,
+    addrSkipped,
+    addrRemaining,
+  } = await searchParams;
 
   const supabase = await createClient();
   const { data } = await supabase
@@ -82,6 +100,20 @@ export default async function ReckonSettingsPage({
         </p>
       )}
 
+      {addrDone && (
+        <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-800">
+          Addresses refreshed: {addrUpdated ?? 0} customer
+          {addrUpdated === "1" ? "" : "s"} updated with their state and postcode
+          {Number(addrSkipped) > 0
+            ? `, ${addrSkipped} left alone because you'd edited their address`
+            : ""}
+          .
+          {Number(addrRemaining) > 0
+            ? ` ${addrRemaining} more still to do — click the button again to carry on.`
+            : ""}
+        </p>
+      )}
+
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         {connection ? (
           <div className="space-y-4">
@@ -118,6 +150,23 @@ export default async function ReckonSettingsPage({
                   </ConfirmSubmitButton>
                 </FormWithToast>
               </div>
+            </div>
+
+            <div className="border-t border-slate-100 pt-4">
+              <p className="text-sm font-medium text-slate-900">Customer addresses</p>
+              <p className="mt-1 text-xs text-slate-500">
+                New customers come across with their full address (street, suburb, state and postcode). For
+                customers imported earlier, this fills in the missing state and postcode from Reckon. Any address
+                you&apos;ve edited by hand is left exactly as it is.
+              </p>
+              <form action={refreshReckonAddresses} className="mt-2">
+                <button
+                  type="submit"
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Refresh addresses from Reckon
+                </button>
+              </form>
             </div>
 
             <FormWithToast
